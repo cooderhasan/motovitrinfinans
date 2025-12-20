@@ -1,0 +1,190 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum CurrencyCode {
+  TL
+  USD
+}
+
+enum CariType {
+  CUSTOMER
+  SUPPLIER
+  EMPLOYEE
+}
+
+enum PaymentType {
+  COLLECTION
+  PAYMENT
+}
+
+enum TransactionType {
+  DEBIT
+  CREDIT
+}
+
+enum PaymentMethod {
+  CASH
+  BANK
+  TRANSFER
+}
+
+model Currency {
+  id        Int      @id @default(autoincrement())
+  code      CurrencyCode @unique
+  name      String
+
+  exchangeRates     ExchangeRate[]
+  cariesDefault     Cari[] @relation("DefaultCurrency")
+  cariesOpening     Cari[] @relation("OpeningBalanceCurrency")
+  invoices          Invoice[]
+  salesSlips        SalesSlip[]
+  payments          Payment[]
+  cashTransactions  CashTransaction[]
+
+  @@map("currencies")
+}
+
+model ExchangeRate {
+  id          Int      @id @default(autoincrement())
+  currencyId  Int      @map("currency_id")
+  rate        Decimal  @db.Decimal(18, 2)
+  rateDate    DateTime @default(now()) @map("rate_date")
+
+  currency    Currency @relation(fields: [currencyId], references: [id])
+
+  @@index([currencyId, rateDate])
+  @@map("exchange_rates")
+}
+
+model Cari {
+  id                        Int        @id @default(autoincrement())
+  type                      CariType
+  title                     String
+  
+  defaultCurrencyId         Int        @map("default_currency_id")
+  openingBalance            Decimal    @default(0) @db.Decimal(18, 2) @map("opening_balance")
+  openingBalanceCurrencyId  Int        @map("opening_balance_currency_id")
+  
+  isActive                  Boolean    @default(true) @map("is_active")
+  createdAt                 DateTime   @default(now()) @map("created_at")
+
+  defaultCurrency           Currency   @relation("DefaultCurrency", fields: [defaultCurrencyId], references: [id])
+  openingBalanceCurrency    Currency   @relation("OpeningBalanceCurrency", fields: [openingBalanceCurrencyId], references: [id])
+  
+  invoices                  Invoice[]
+  salesSlips                SalesSlip[]
+  payments                  Payment[]
+  transactions              CashTransaction[]
+
+  @@map("caries")
+}
+
+model Invoice {
+  id            Int      @id @default(autoincrement())
+  supplierId    Int      @map("supplier_id")
+  invoiceDate   DateTime @map("invoice_date")
+  currencyId    Int      @map("currency_id")
+  exchangeRate  Decimal  @db.Decimal(18, 2) @map("exchange_rate")
+  totalAmount   Decimal  @db.Decimal(18, 2) @map("total_amount")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  supplier      Cari     @relation(fields: [supplierId], references: [id])
+  currency      Currency @relation(fields: [currencyId], references: [id])
+  items         InvoiceItem[]
+
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          Int      @id @default(autoincrement())
+  invoiceId   Int      @map("invoice_id")
+  productName String   @map("product_name")
+  quantity    Decimal  @db.Decimal(18, 2)
+  unitPrice   Decimal  @db.Decimal(18, 2) @map("unit_price")
+  lineTotal   Decimal  @db.Decimal(18, 2) @map("line_total")
+
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id])
+
+  @@map("invoice_items")
+}
+
+model SalesSlip {
+  id            Int      @id @default(autoincrement())
+  customerId    Int      @map("customer_id")
+  slipDate      DateTime @map("slip_date")
+  currencyId    Int      @map("currency_id")
+  exchangeRate  Decimal  @db.Decimal(18, 2) @map("exchange_rate")
+  totalAmount   Decimal  @db.Decimal(18, 2) @map("total_amount")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  customer      Cari     @relation(fields: [customerId], references: [id])
+  currency      Currency @relation(fields: [currencyId], references: [id])
+  items         SalesItem[]
+
+  @@map("sales_slips")
+}
+
+model SalesItem {
+  id          Int       @id @default(autoincrement())
+  salesSlipId Int       @map("sales_slip_id")
+  productName String    @map("product_name")
+  quantity    Decimal   @db.Decimal(18, 2)
+  unitPrice   Decimal   @db.Decimal(18, 2) @map("unit_price")
+  lineTotal   Decimal   @db.Decimal(18, 2) @map("line_total")
+
+  salesSlip   SalesSlip @relation(fields: [salesSlipId], references: [id])
+
+  @@map("sales_items")
+}
+
+model Payment {
+  id            Int           @id @default(autoincrement())
+  cariId        Int           @map("cari_id")
+  paymentType   PaymentType   @map("payment_type")
+  method        PaymentMethod
+  amount        Decimal       @db.Decimal(18, 2)
+  currencyId    Int           @map("currency_id")
+  exchangeRate  Decimal       @db.Decimal(18, 2) @map("exchange_rate")
+  paymentDate   DateTime      @map("payment_date")
+  
+  cari          Cari          @relation(fields: [cariId], references: [id])
+  currency      Currency      @relation(fields: [currencyId], references: [id])
+
+  @@map("payments")
+}
+
+model CashTransaction {
+  id              Int             @id @default(autoincrement())
+  cariId          Int             @map("cari_id")
+  transactionType TransactionType @map("transaction_type")
+  source          String
+  sourceId        Int             @map("source_id")
+  amount          Decimal         @db.Decimal(18, 2)
+  currencyId      Int             @map("currency_id")
+  exchangeRate    Decimal         @db.Decimal(18, 2) @map("exchange_rate")
+  transactionDate DateTime        @map("transaction_date")
+  createdAt       DateTime        @default(now()) @map("created_at")
+
+  cari            Cari     @relation(fields: [cariId], references: [id])
+  currency        Currency @relation(fields: [currencyId], references: [id])
+
+  @@map("cash_transactions")
+}
+
+model AuditLog {
+  id        Int      @id @default(autoincrement())
+  userId    String   @map("user_id")
+  action    String
+  entity    String
+  entityId  Int      @map("entity_id")
+  timestamp DateTime @default(now())
+  details   Json?
+
+  @@map("audit_logs")
+}
