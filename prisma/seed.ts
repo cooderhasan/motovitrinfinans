@@ -36,44 +36,51 @@ async function main() {
 
     console.log('Exchange Rate (USD) created.')
 
-    // 3. Caries
-    // Customer
-    const customer = await prisma.cari.create({
-        data: {
-            type: CariType.CUSTOMER,
-            title: 'Örnek Müşteri A.Ş.',
-            defaultCurrencyId: tl.id,
-            openingBalance: 0,
-            openingBalanceCurrencyId: tl.id,
-            isActive: true,
-        },
-    })
+    // 3. Caries - Skip if already exists
+    const existingCaries = await prisma.cari.count()
 
-    // Supplier
-    const supplier = await prisma.cari.create({
-        data: {
-            type: CariType.SUPPLIER,
-            title: 'Global Tedarik Ltd.',
-            defaultCurrencyId: usd.id, // USD Supplier
-            openingBalance: 0,
-            openingBalanceCurrencyId: usd.id,
-            isActive: true,
-        },
-    })
+    if (existingCaries === 0) {
+        // Customer
+        const customer = await prisma.cari.create({
+            data: {
+                type: CariType.CUSTOMER,
+                title: 'Örnek Müşteri A.Ş.',
+                defaultCurrencyId: tl.id,
+                openingBalance: 0,
+                openingBalanceCurrencyId: tl.id,
+                isActive: true,
+            },
+        })
 
-    // Employee
-    const employee = await prisma.cari.create({
-        data: {
-            type: CariType.EMPLOYEE,
-            title: 'Ahmet Yılmaz',
-            defaultCurrencyId: tl.id,
-            openingBalance: 0,
-            openingBalanceCurrencyId: tl.id,
-            isActive: true,
-        },
-    })
+        // Supplier
+        const supplier = await prisma.cari.create({
+            data: {
+                type: CariType.SUPPLIER,
+                title: 'Global Tedarik Ltd.',
+                defaultCurrencyId: usd.id, // USD Supplier
+                openingBalance: 0,
+                openingBalanceCurrencyId: usd.id,
+                isActive: true,
+            },
+        })
 
-    console.log({ customer, supplier, employee })
+        // Employee
+        const employee = await prisma.cari.create({
+            data: {
+                type: CariType.EMPLOYEE,
+                title: 'Ahmet Yılmaz',
+                defaultCurrencyId: tl.id,
+                openingBalance: 0,
+                openingBalanceCurrencyId: tl.id,
+                isActive: true,
+            },
+        })
+
+        console.log({ customer, supplier, employee })
+    } else {
+        console.log('Caries already exist, skipping seed...')
+    }
+
     console.log('Seeding finished.')
 }
 
