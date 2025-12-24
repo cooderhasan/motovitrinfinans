@@ -68,17 +68,17 @@ model Cari {
   type                      CariType
   title                     String
   
-  // İletişim Bilgileri
+  // Contact Info
   phone                     String?    @map("phone")
   email                     String?    @map("email")
   address                   String?    @map("address")
   city                      String?    @map("city")
   
-  // Vergi Bilgileri
+  // Tax Info
   taxNumber                 String?    @map("tax_number")
   taxOffice                 String?    @map("tax_office")
   
-  // Notlar
+  // Notes
   notes                     String?    @map("notes")
   
   defaultCurrencyId         Int        @map("default_currency_id")
