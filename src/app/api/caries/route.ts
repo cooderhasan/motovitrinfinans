@@ -57,7 +57,11 @@ export async function GET(request: Request) {
         return NextResponse.json(cariesWithBalance)
     } catch (error) {
         console.error('Cari listeleme hatası:', error)
-        return NextResponse.json({ error: 'Cariler listelenirken bir hata oluştu.' }, { status: 500 })
+        const errorMessage = error instanceof Error ? error.message : 'Bilinmeyen hata'
+        return NextResponse.json({
+            error: 'Cariler listelenirken bir hata oluştu.',
+            details: errorMessage
+        }, { status: 500 })
     }
 }
 
