@@ -77,6 +77,25 @@ async function main() {
     } else {
         console.log('Caries already exist, skipping seed...');
     }
+    // 4. Default Settings - Sadece yoksa ekle, varsa dokunma
+    console.log('Checking settings...');
+    const defaultSettings = [
+        { key: 'siteTitle', value: 'Finans ERP' },
+        { key: 'siteDescription', value: 'Finansal Yonetim Sistemi' },
+        { key: 'faviconUrl', value: '/favicon.ico' },
+        { key: 'logoUrl', value: '' }
+    ];
+    for (const setting of defaultSettings) {
+        await prisma.settings.upsert({
+            where: { key: setting.key },
+            update: {}, // Varsa güncelleme YAPMA - mevcut değeri koru
+            create: {
+                key: setting.key,
+                value: setting.value
+            }
+        });
+    }
+    console.log('Settings checked/initialized.');
     console.log('Seeding finished.');
 }
 main()
