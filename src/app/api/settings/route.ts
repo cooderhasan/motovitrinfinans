@@ -46,6 +46,10 @@ export async function PUT(request: Request) {
         return NextResponse.json({ success: true })
     } catch (error) {
         console.error('Settings update error:', error)
-        return NextResponse.json({ error: 'Ayarlar guncellenirken hata olustu' }, { status: 500 })
+        const errorMessage = error instanceof Error ? error.message : 'Bilinmeyen hata'
+        return NextResponse.json({
+            error: 'Ayarlar guncellenirken hata olustu',
+            details: errorMessage
+        }, { status: 500 })
     }
 }
