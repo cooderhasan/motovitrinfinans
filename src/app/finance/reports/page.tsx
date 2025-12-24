@@ -84,7 +84,6 @@ export default function ReportsPage() {
         // Tablo
         const tableData = reportData.map((row: any) => [
             new Date(row.transactionDate).toLocaleDateString('tr-TR'),
-            row.source,
             row.description || '-',
             row.debit > 0 ? row.debit.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) : '-',
             row.credit > 0 ? row.credit.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) : '-',
@@ -92,15 +91,15 @@ export default function ReportsPage() {
         ])
 
         autoTable(doc, {
-            head: [['Tarih', 'Islem', 'Aciklama', 'Borc', 'Alacak', 'Bakiye']],
+            head: [['Tarih', 'Aciklama', 'Borc', 'Alacak', 'Bakiye']],
             body: tableData,
             startY: 55,
             styles: { fontSize: 9 },
             headStyles: { fillColor: [51, 65, 85] },
             columnStyles: {
+                2: { halign: 'right' },
                 3: { halign: 'right' },
-                4: { halign: 'right' },
-                5: { halign: 'right', fontStyle: 'bold' }
+                4: { halign: 'right', fontStyle: 'bold' }
             }
         })
 
@@ -206,7 +205,6 @@ export default function ReportsPage() {
                             <TableHeader>
                                 <TableRow className="bg-slate-100">
                                     <TableHead className="w-24">Tarih</TableHead>
-                                    <TableHead className="w-28">Islem</TableHead>
                                     <TableHead>Aciklama</TableHead>
                                     <TableHead className="text-right w-28 text-rose-600">Borc</TableHead>
                                     <TableHead className="text-right w-28 text-emerald-600">Alacak</TableHead>
@@ -217,7 +215,6 @@ export default function ReportsPage() {
                                 {reportData.map((row: any, i: number) => (
                                     <TableRow key={i} className="hover:bg-slate-50">
                                         <TableCell className="text-sm">{new Date(row.transactionDate).toLocaleDateString('tr-TR')}</TableCell>
-                                        <TableCell className="text-xs font-medium text-slate-500 uppercase">{row.source}</TableCell>
                                         <TableCell className="text-sm">{row.description || '-'}</TableCell>
                                         <TableCell className="text-right font-mono text-rose-600">
                                             {row.debit > 0 ? row.debit.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) : '-'}

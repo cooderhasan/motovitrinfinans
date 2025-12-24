@@ -2,8 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { LayoutDashboard, Users, FileText, CreditCard, BarChart3, Settings, Menu, X } from 'lucide-react'
+import { usePathname, useRouter } from 'next/navigation'
+import { LayoutDashboard, Users, FileText, CreditCard, BarChart3, Settings, Menu, X, LogOut } from 'lucide-react'
 
 const menuItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
@@ -74,7 +74,7 @@ export function Sidebar() {
                     })}
                 </nav>
 
-                <div className="p-4 border-t border-slate-700">
+                <div className="p-4 border-t border-slate-700 space-y-2">
                     <Link
                         href="/finance/settings"
                         onClick={() => setIsOpen(false)}
@@ -86,7 +86,17 @@ export function Sidebar() {
                         <Settings size={20} />
                         <span>Ayarlar</span>
                     </Link>
-                    <div className="mt-4 px-4">
+                    <button
+                        onClick={async () => {
+                            await fetch('/api/auth/login', { method: 'DELETE' })
+                            window.location.href = '/login'
+                        }}
+                        className="flex items-center gap-3 px-4 py-3 rounded-lg transition-colors text-red-400 hover:text-white hover:bg-red-600 w-full"
+                    >
+                        <LogOut size={20} />
+                        <span>Cikis Yap</span>
+                    </button>
+                    <div className="mt-2 px-4">
                         <div className="text-xs text-slate-500">v1.0.0 Alpha</div>
                     </div>
                 </div>
