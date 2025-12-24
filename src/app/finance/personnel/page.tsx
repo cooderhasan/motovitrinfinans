@@ -21,7 +21,7 @@ import {
     DialogTitle,
     DialogFooter
 } from '@/components/ui/dialog'
-import { Users, Banknote, Pencil, Trash2, Calculator, Wallet } from 'lucide-react'
+import { Users, Banknote, Pencil, Trash2, Calculator, Wallet, Plus, ArrowUpRight } from 'lucide-react'
 
 // API Functions
 async function getEmployees() {
@@ -66,6 +66,17 @@ async function accrueSalaries(month: number, year: number) {
     return res.json()
 }
 
+// Hızlı ödeme/avans işlemi
+async function createPayment(data: any) {
+    const res = await fetch('/api/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    if (!res.ok) throw new Error('Ödeme kaydedilemedi')
+    return res.json()
+}
+
 export default function PersonnelPage() {
     const queryClient = useQueryClient()
     const [selectedEmployee, setSelectedEmployee] = useState<any>(null)
@@ -82,6 +93,15 @@ export default function PersonnelPage() {
     const [accrualMonth, setAccrualMonth] = useState(new Date().getMonth() + 1)
     const [accrualYear, setAccrualYear] = useState(new Date().getFullYear())
     const [accruing, setAccruing] = useState(false)
+
+    // Quick Payment Dialog
+    const [paymentDialogOpen, setPaymentDialogOpen] = useState(false)
+    const [paymentForm, setPaymentForm] = useState({
+        amount: '',
+        description: 'Avans',
+        date: new Date().toISOString().split('T')[0]
+    })
+    const [submittingPayment, setSubmittingPayment] = useState(false)
 
     const { data: employees, isLoading } = useQuery({
         queryKey: ['employees'],
@@ -178,13 +198,46 @@ export default function PersonnelPage() {
         }
     }
 
+    // Hızlı ödeme/avans işlemi
+    const handleQuickPayment = async () => {
+        if (!selectedEmployee) {
+            alert('Lütfen önce bir personel seçin')
+            return
+        }
+        if (!paymentForm.amount || parseFloat(paymentForm.amount) <= 0) {
+            alert('Lütfen geçerli bir tutar girin')
+            return
+        }
+
+        setSubmittingPayment(true)
+        try {
+            await createPayment({
+                cariId: selectedEmployee.id,
+                paymentType: 'PAYMENT',
+                method: 'CASH',
+                amount: parseFloat(paymentForm.amount),
+                currencyCode: 'TL',
+                paymentDate: paymentForm.date
+            })
+            alert('Ödeme başarıyla kaydedildi')
+            setPaymentDialogOpen(false)
+            setPaymentForm({ amount: '', description: 'Avans', date: new Date().toISOString().split('T')[0] })
+            queryClient.invalidateQueries({ queryKey: ['employees'] })
+            loadTransactions(selectedEmployee.id)
+        } catch (error: any) {
+            alert('Hata: ' + error.message)
+        } finally {
+            setSubmittingPayment(false)
+        }
+    }
+
     // Bu ayki avans toplamını hesapla
     const calculateMonthlyAdvances = (txList: any[]) => {
         const now = new Date()
         const firstDay = new Date(now.getFullYear(), now.getMonth(), 1)
         return txList
-            .filter(tx => new Date(tx.transactionDate) >= firstDay && tx.credit > 0)
-            .reduce((sum, tx) => sum + tx.credit, 0)
+            .filter(tx => new Date(tx.transactionDate) >= firstDay && tx.debit > 0)
+            .reduce((sum, tx) => sum + tx.debit, 0)
     }
 
     if (isLoading) return <div className="p-8">Yükleniyor...</div>
@@ -254,6 +307,14 @@ export default function PersonnelPage() {
                                 </p>
                             )}
                         </div>
+                        {selectedEmployee && (
+                            <Button
+                                onClick={() => setPaymentDialogOpen(true)}
+                                className="bg-emerald-600 hover:bg-emerald-700"
+                            >
+                                <Plus className="mr-2 h-4 w-4" /> Avans Ver
+                            </Button>
+                        )}
                     </CardHeader>
                     <CardContent>
                         {!selectedEmployee ? (
@@ -401,6 +462,58 @@ export default function PersonnelPage() {
                         <Button variant="outline" onClick={() => setAccrualDialogOpen(false)}>İptal</Button>
                         <Button onClick={handleSalaryAccrual} disabled={accruing} className="bg-violet-600 hover:bg-violet-700">
                             {accruing ? 'İşleniyor...' : 'Tahakkuk Yap'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Quick Payment Dialog */}
+            <Dialog open={paymentDialogOpen} onOpenChange={setPaymentDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            <ArrowUpRight className="h-5 w-5 text-emerald-600" />
+                            Avans / Ödeme Yap
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        {selectedEmployee && (
+                            <div className="p-3 rounded-lg bg-slate-50 border">
+                                <p className="font-medium">{selectedEmployee.title}</p>
+                                <p className="text-sm text-muted-foreground">
+                                    Mevcut Bakiye: <span className={`font-semibold ${(selectedEmployee.currentBalance || 0) > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
+                                        {(selectedEmployee.currentBalance || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ₺
+                                    </span>
+                                </p>
+                            </div>
+                        )}
+                        <div className="grid gap-2">
+                            <Label>Tutar (₺)</Label>
+                            <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="0.00"
+                                value={paymentForm.amount}
+                                onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label>Tarih</Label>
+                            <Input
+                                type="date"
+                                value={paymentForm.date}
+                                onChange={(e) => setPaymentForm({ ...paymentForm, date: e.target.value })}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setPaymentDialogOpen(false)}>İptal</Button>
+                        <Button
+                            onClick={handleQuickPayment}
+                            disabled={submittingPayment}
+                            className="bg-emerald-600 hover:bg-emerald-700"
+                        >
+                            {submittingPayment ? 'Kaydediliyor...' : 'Ödemeyi Kaydet'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>
