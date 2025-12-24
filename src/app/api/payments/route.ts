@@ -44,14 +44,25 @@ export async function POST(request: Request) {
         }
 
         // 3. Transaction Type Belirleme
-        // Muhasebe Mantığı:
-        // Tahsilat (Collection) -> Cari ALACAKLANIR (Credit). Borcu düşer.
-        // Ödeme (Payment) -> Cari BORÇLANIR (Debit). Alacağı düşer.
+        // Muhasebe Mantığı (Cari bakış açısından):
+        // 
+        // MÜŞTERİ için:
+        //   - Satış yaptık → Müşteri bize borçlu → DEBIT (borç artışı)
+        //   - Tahsilat aldık → Müşteri ödedi → CREDIT (borç azalışı)
+        //
+        // TEDARİKÇİ/PERSONEL için:
+        //   - Fatura/Maaş → Biz onlara borçluyuz → CREDIT (alacak artışı)  
+        //   - Ödeme yaptık → Biz ödedik → DEBIT (alacak azalışı)
+        //
+        // Özet: 
+        //   - COLLECTION (Tahsilat) → CREDIT (müşteri borcunu ödedi)
+        //   - PAYMENT (Ödeme) → DEBIT (biz ödedik, borç/alacak azaldı)
 
         let transactionType: TransactionType
         if (paymentType === 'COLLECTION') {
             transactionType = TransactionType.CREDIT
         } else {
+            // PAYMENT - biz ödeme yaptık
             transactionType = TransactionType.DEBIT
         }
 

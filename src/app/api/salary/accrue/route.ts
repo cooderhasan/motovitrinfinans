@@ -71,11 +71,11 @@ export async function POST(request: Request) {
                 continue
             }
 
-            // Bu ay içindeki avansları hesapla (CREDIT işlemler = personele yapılan ödemeler)
+            // Bu ay içindeki avansları hesapla (DEBIT işlemler = personele yapılan ödemeler)
             const advances = await db.cashTransaction.findMany({
                 where: {
                     cariId: employee.id,
-                    transactionType: 'CREDIT',
+                    transactionType: 'DEBIT',
                     transactionDate: {
                         gte: new Date(year, month - 1, 1),
                         lt: new Date(year, month, 1)
@@ -85,11 +85,13 @@ export async function POST(request: Request) {
 
             const totalAdvances = advances.reduce((sum, adv) => sum + adv.amount.toNumber(), 0)
 
-            // Maaş tahakkuku işlemi oluştur (DEBIT = Personel borçlanır = Maaş hak ediş)
+            // Maaş tahakkuku işlemi oluştur (CREDIT = Şirket personele borçlanır = Maaş hak edişi)
+            // Personele ödeme yapıldığında DEBIT, maaş hak edişi CREDIT olarak kaydedilir
+            // Bakiye = DEBIT - CREDIT, negatif bakiye = şirket personele borçlu
             await db.cashTransaction.create({
                 data: {
                     cariId: employee.id,
-                    transactionType: 'DEBIT',
+                    transactionType: 'CREDIT',
                     source: 'salary_accrual',
                     sourceId: employee.id,
                     amount: salaryAmount,
