@@ -19,6 +19,7 @@ export const metadata: Metadata = {
 
 import Providers from "./providers";
 import { Sidebar } from "@/components/layout/Sidebar";
+import { DynamicHead } from "@/components/DynamicHead";
 
 export default function RootLayout({
   children,
@@ -31,6 +32,7 @@ export default function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased flex bg-slate-50`}
       >
         <Providers>
+          <DynamicHead />
           <Sidebar />
           <main className="flex-1 md:ml-64 p-4 md:p-8 overflow-y-auto min-h-screen pt-16 md:pt-8">
             {children}
