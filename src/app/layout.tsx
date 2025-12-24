@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import Providers from "./providers";
+import { DynamicHead } from "@/components/DynamicHead";
+import { LayoutWrapper } from "@/components/layout/LayoutWrapper";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -17,10 +20,6 @@ export const metadata: Metadata = {
   description: "Finansal Yonetim Sistemi",
 };
 
-import Providers from "./providers";
-import { Sidebar } from "@/components/layout/Sidebar";
-import { DynamicHead } from "@/components/DynamicHead";
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -29,17 +28,13 @@ export default function RootLayout({
   return (
     <html lang="tr">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased flex bg-slate-50`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
         <Providers>
           <DynamicHead />
-          <Sidebar />
-          <main className="flex-1 md:ml-64 p-4 md:p-8 overflow-y-auto min-h-screen pt-16 md:pt-8">
-            {children}
-          </main>
+          <LayoutWrapper>{children}</LayoutWrapper>
         </Providers>
       </body>
     </html>
   );
 }
-
