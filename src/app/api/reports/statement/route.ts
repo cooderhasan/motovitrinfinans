@@ -73,8 +73,8 @@ export async function POST(request: Request) {
         const statementInitial = startDate ? [{
             id: 0,
             transactionDate: startDate,
-            source: 'DEVİR',
-            description: 'Dönem Başı Devir',
+            source: 'DEVIR',
+            description: 'Donem Basi Devir',
             debit: devirBalance > 0 ? devirBalance : 0,
             credit: devirBalance < 0 ? Math.abs(devirBalance) : 0,
             balance: devirBalance
@@ -118,9 +118,9 @@ export async function POST(request: Request) {
 }
 
 function getDescription(t: any) {
-    if (t.source === 'invoice') return `Alış Faturası #${t.sourceId}`
-    if (t.source === 'sales_slip') return `Satış Fişi #${t.sourceId}`
-    if (t.source === 'payment') return `Tahsilat/Ödeme #${t.sourceId}`
-    if (t.source === 'opening_balance') return 'Açılış Bakiyesi'
-    return 'Diğer İşlem'
+    if (t.source === 'invoice') return `Alis Faturasi #${t.sourceId}`
+    if (t.source === 'sales_slip') return `Satis Fisi #${t.sourceId}`
+    if (t.source === 'payment') return `Tahsilat/Odeme #${t.sourceId}`
+    if (t.source === 'opening_balance') return 'Acilis Bakiyesi'
+    return 'Diger Islem'
 }
