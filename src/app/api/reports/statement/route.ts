@@ -96,9 +96,10 @@ export async function POST(request: Request) {
 
             return {
                 id: t.id,
+                transactionId: t.id,  // For edit/delete operations
                 transactionDate: t.transactionDate,
                 source: t.source,
-                description: getDescription(t),
+                description: (t as any).description || getDescription(t),
                 debit,
                 credit,
                 balance: runningBalance

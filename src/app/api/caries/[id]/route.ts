@@ -59,6 +59,7 @@ export async function PUT(
         if (body.taxOffice !== undefined) updateData.taxOffice = body.taxOffice
         if (body.notes !== undefined) updateData.notes = body.notes
         if (body.isActive !== undefined) updateData.isActive = body.isActive
+        if (body.salary !== undefined) updateData.salary = body.salary
 
         // Para birimi değişikliği
         if (body.defaultCurrencyCode) {

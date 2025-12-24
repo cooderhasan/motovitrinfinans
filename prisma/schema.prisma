@@ -81,6 +81,9 @@ model Cari {
   // Notes
   notes                     String?    @map("notes")
   
+  // Employee Salary
+  salary                    Decimal?   @db.Decimal(18, 2) @map("salary")
+  
   defaultCurrencyId         Int        @map("default_currency_id")
   openingBalance            Decimal    @default(0) @db.Decimal(18, 2) @map("opening_balance")
   openingBalanceCurrencyId  Int        @map("opening_balance_currency_id")
@@ -182,6 +185,7 @@ model CashTransaction {
   amount          Decimal         @db.Decimal(18, 2)
   currencyId      Int             @map("currency_id")
   exchangeRate    Decimal         @db.Decimal(18, 2) @map("exchange_rate")
+  description     String?         @map("description")
   transactionDate DateTime        @map("transaction_date")
   createdAt       DateTime        @default(now()) @map("created_at")
 

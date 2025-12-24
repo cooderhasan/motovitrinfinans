@@ -59,7 +59,8 @@ export default function EditCariPage() {
         taxOffice: '',
         notes: '',
         defaultCurrencyCode: 'TL',
-        isActive: true
+        isActive: true,
+        salary: ''
     })
 
     const { data: cari, isLoading } = useQuery({
@@ -82,7 +83,8 @@ export default function EditCariPage() {
                 taxOffice: cari.taxOffice || '',
                 notes: cari.notes || '',
                 defaultCurrencyCode: cari.defaultCurrency?.code || 'TL',
-                isActive: cari.isActive ?? true
+                isActive: cari.isActive ?? true,
+                salary: cari.salary ? cari.salary.toString() : ''
             })
         }
     }, [cari])
@@ -210,6 +212,23 @@ export default function EditCariPage() {
                                     <option value="false">Pasif</option>
                                 </select>
                             </div>
+
+                            {/* Personel Maaşı - Sadece EMPLOYEE tipi için */}
+                            {formData.type === 'EMPLOYEE' && (
+                                <div className="grid gap-2 p-4 bg-violet-50 rounded-lg border border-violet-200">
+                                    <Label htmlFor="salary" className="text-violet-700 font-semibold">Aylık Maaş (₺)</Label>
+                                    <Input
+                                        id="salary"
+                                        type="number"
+                                        step="0.01"
+                                        value={formData.salary}
+                                        onChange={(e) => handleChange('salary', e.target.value)}
+                                        placeholder="50000.00"
+                                        className="border-violet-300"
+                                    />
+                                    <p className="text-xs text-violet-600">Ay sonu maaş tahakkukunda kullanılacaktır.</p>
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
 

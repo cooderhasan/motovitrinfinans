@@ -3,11 +3,12 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, Users, FileText, CreditCard, BarChart3, Settings, Menu, X, LogOut } from 'lucide-react'
+import { LayoutDashboard, Users, UserCheck, FileText, CreditCard, BarChart3, Settings, Menu, X, LogOut } from 'lucide-react'
 
 const menuItems = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
     { name: 'Cariler', href: '/finance/caries', icon: Users },
+    { name: 'Personel', href: '/finance/personnel', icon: UserCheck },
     { name: 'Fatura & Satis', href: '/finance/invoices', icon: FileText },
     { name: 'Kasa & Odeme', href: '/finance/payments', icon: CreditCard },
     { name: 'Raporlar', href: '/finance/reports', icon: BarChart3 },
