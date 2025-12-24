@@ -1,6 +1,6 @@
 # Dependencies
 FROM node:20-alpine AS deps
-RUN apk add --no-cache libc6-compat openssl
+RUN apk add --no-cache libc6-compat openssl openssl-dev
 WORKDIR /app
 
 COPY package.json package-lock.json* ./
@@ -8,11 +8,13 @@ RUN npm ci --legacy-peer-deps
 
 # Builder
 FROM node:20-alpine AS builder
+RUN apk add --no-cache libc6-compat openssl openssl-dev
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
-# Generate Prisma Client
+# Generate Prisma Client with correct binary targets
+ENV PRISMA_CLI_BINARY_TARGETS=linux-musl-openssl-3.0.x
 RUN npx prisma generate
 
 ENV NEXT_TELEMETRY_DISABLED=1
