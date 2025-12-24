@@ -19,13 +19,42 @@ export async function GET(request: Request) {
             where: whereClause,
             include: {
                 defaultCurrency: true,
-                // Bakiye hesaplama cashTransactions üzerinden yapılacağı için burada direkt bakiye alanı yok
-                // Ancak açılış bakiyesi var.
+                transactions: {
+                    select: {
+                        transactionType: true,
+                        amount: true
+                    }
+                }
             },
             orderBy: { createdAt: 'desc' }
         })
 
-        return NextResponse.json(caries)
+        // Güncel bakiye hesaplama
+        const cariesWithBalance = caries.map(cari => {
+            let totalDebit = 0
+            let totalCredit = 0
+
+            cari.transactions.forEach((tx: any) => {
+                if (tx.transactionType === 'DEBIT') {
+                    totalDebit += Number(tx.amount)
+                } else {
+                    totalCredit += Number(tx.amount)
+                }
+            })
+
+            // Güncel bakiye: Borç - Alacak (pozitif = borçlu, negatif = alacaklı)
+            const currentBalance = totalDebit - totalCredit
+
+            return {
+                ...cari,
+                totalDebit,
+                totalCredit,
+                currentBalance,
+                transactions: undefined // Frontend'e göndermiyoruz
+            }
+        })
+
+        return NextResponse.json(cariesWithBalance)
     } catch (error) {
         console.error('Cari listeleme hatası:', error)
         return NextResponse.json({ error: 'Cariler listelenirken bir hata oluştu.' }, { status: 500 })

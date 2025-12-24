@@ -1,14 +1,38 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
+import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Plus } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Plus, Pencil } from 'lucide-react'
 
-// Şimdilik sadece yönlendirme ve basit bir "Yapım Aşamasında" veya boş bir liste gösterelim.
-// Kullanıcı "Yeni Fatura" diyebilsin.
+// Faturaları çekme
+async function getInvoices() {
+    const res = await fetch('/api/invoices')
+    if (!res.ok) throw new Error('Faturalar çekilemedi')
+    return res.json()
+}
+
+// Satış fişlerini çekme
+async function getSales() {
+    const res = await fetch('/api/sales')
+    if (!res.ok) throw new Error('Satışlar çekilemedi')
+    return res.json()
+}
 
 export default function InvoicesIndexPage() {
+    const { data: invoices, isLoading: invoicesLoading } = useQuery({
+        queryKey: ['invoices'],
+        queryFn: getInvoices
+    })
+
+    const { data: sales, isLoading: salesLoading } = useQuery({
+        queryKey: ['sales'],
+        queryFn: getSales
+    })
+
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
@@ -31,25 +55,99 @@ export default function InvoicesIndexPage() {
             </div>
 
             <div className="grid gap-6 md:grid-cols-2">
-                <Card className="hover:bg-slate-50 transition-colors cursor-pointer border-l-4 border-l-orange-500">
-                    <CardContent className="pt-6">
-                        <h3 className="text-xl font-semibold text-slate-800">Son Alış Faturaları</h3>
-                        <p className="text-sm text-slate-500 mb-4">Tedarikçi borçlanmaları</p>
-                        <div className="text-center py-8 text-slate-400 border border-dashed rounded-md bg-white">
-                            Henüz fatura girişi yapılmadı veya liste yükleniyor...
-                            {/* Buraya son 5 fatura component'i gelecek */}
-                        </div>
+                {/* Son Alış Faturaları */}
+                <Card className="border-l-4 border-l-orange-500">
+                    <CardHeader>
+                        <CardTitle className="text-xl font-semibold text-slate-800">Son Alış Faturaları</CardTitle>
+                        <p className="text-sm text-slate-500">Tedarikçi borçlanmaları</p>
+                    </CardHeader>
+                    <CardContent>
+                        {invoicesLoading ? (
+                            <div className="text-center py-8 text-slate-400">Yükleniyor...</div>
+                        ) : invoices?.length > 0 ? (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Tarih</TableHead>
+                                        <TableHead>Tedarikçi</TableHead>
+                                        <TableHead className="text-right">Tutar</TableHead>
+                                        <TableHead></TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {invoices.slice(0, 10).map((inv: any) => (
+                                        <TableRow key={inv.id}>
+                                            <TableCell className="text-sm">
+                                                {new Date(inv.invoiceDate).toLocaleDateString('tr-TR')}
+                                            </TableCell>
+                                            <TableCell className="font-medium">{inv.supplier?.title}</TableCell>
+                                            <TableCell className="text-right font-mono text-orange-600">
+                                                {Number(inv.totalAmount).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {inv.currency?.code}
+                                            </TableCell>
+                                            <TableCell>
+                                                <Link href={`/finance/invoices/${inv.id}/edit`}>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                </Link>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        ) : (
+                            <div className="text-center py-8 text-slate-400 border border-dashed rounded-md bg-white">
+                                Henüz fatura girişi yapılmadı.
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 
-                <Card className="hover:bg-slate-50 transition-colors cursor-pointer border-l-4 border-l-blue-500">
-                    <CardContent className="pt-6">
-                        <h3 className="text-xl font-semibold text-slate-800">Son Satış Fişleri</h3>
-                        <p className="text-sm text-slate-500 mb-4">Müşteri alacaklanmaları</p>
-                        <div className="text-center py-8 text-slate-400 border border-dashed rounded-md bg-white">
-                            Henüz satış girişi yapılmadı veya liste yükleniyor...
-                            {/* Buraya son 5 satış component'i gelecek */}
-                        </div>
+                {/* Son Satış Fişleri */}
+                <Card className="border-l-4 border-l-blue-500">
+                    <CardHeader>
+                        <CardTitle className="text-xl font-semibold text-slate-800">Son Satış Fişleri</CardTitle>
+                        <p className="text-sm text-slate-500">Müşteri alacaklanmaları</p>
+                    </CardHeader>
+                    <CardContent>
+                        {salesLoading ? (
+                            <div className="text-center py-8 text-slate-400">Yükleniyor...</div>
+                        ) : sales?.length > 0 ? (
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Tarih</TableHead>
+                                        <TableHead>Müşteri</TableHead>
+                                        <TableHead className="text-right">Tutar</TableHead>
+                                        <TableHead></TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {sales.slice(0, 10).map((sale: any) => (
+                                        <TableRow key={sale.id}>
+                                            <TableCell className="text-sm">
+                                                {new Date(sale.slipDate).toLocaleDateString('tr-TR')}
+                                            </TableCell>
+                                            <TableCell className="font-medium">{sale.customer?.title}</TableCell>
+                                            <TableCell className="text-right font-mono text-blue-600">
+                                                {Number(sale.totalAmount).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {sale.currency?.code}
+                                            </TableCell>
+                                            <TableCell>
+                                                <Link href={`/finance/sales/${sale.id}/edit`}>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                        <Pencil className="h-4 w-4" />
+                                                    </Button>
+                                                </Link>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        ) : (
+                            <div className="text-center py-8 text-slate-400 border border-dashed rounded-md bg-white">
+                                Henüz satış girişi yapılmadı.
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>

@@ -3,6 +3,26 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { CurrencyCode, TransactionType } from '@prisma/client'
 
+// GET /api/sales
+// Tüm satış fişlerini listeler
+export async function GET() {
+    try {
+        const salesSlips = await db.salesSlip.findMany({
+            include: {
+                customer: true,
+                currency: true,
+                items: true
+            },
+            orderBy: { slipDate: 'desc' },
+            take: 50
+        })
+        return NextResponse.json(salesSlips)
+    } catch (error) {
+        console.error('Satış fişi listeleme hatası:', error)
+        return NextResponse.json({ error: 'Satış fişleri listelenirken hata oluştu.' }, { status: 500 })
+    }
+}
+
 // POST /api/sales
 // Satış Fişi (Customer) Oluşturma
 export async function POST(request: Request) {

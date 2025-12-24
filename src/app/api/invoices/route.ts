@@ -3,6 +3,26 @@ import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 import { CurrencyCode, TransactionType } from '@prisma/client'
 
+// GET /api/invoices
+// Tüm faturaları listeler
+export async function GET() {
+    try {
+        const invoices = await db.invoice.findMany({
+            include: {
+                supplier: true,
+                currency: true,
+                items: true
+            },
+            orderBy: { invoiceDate: 'desc' },
+            take: 50
+        })
+        return NextResponse.json(invoices)
+    } catch (error) {
+        console.error('Fatura listeleme hatası:', error)
+        return NextResponse.json({ error: 'Faturalar listelenirken hata oluştu.' }, { status: 500 })
+    }
+}
+
 // POST /api/invoices
 // Alış Faturası (Supplier) Oluşturma
 export async function POST(request: Request) {
