@@ -5,7 +5,8 @@ import { db } from '@/lib/db'
 const defaultSettings: Record<string, string> = {
     siteTitle: 'Finans ERP',
     siteDescription: 'Finansal Yonetim Sistemi',
-    faviconUrl: '/favicon.ico'
+    faviconUrl: '/favicon.ico',
+    logoUrl: ''
 }
 
 // GET /api/settings

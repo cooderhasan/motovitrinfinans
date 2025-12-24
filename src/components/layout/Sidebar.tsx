@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { LayoutDashboard, Users, UserCheck, FileText, CreditCard, BarChart3, Settings, Menu, X, LogOut } from 'lucide-react'
@@ -16,7 +16,21 @@ const menuItems = [
 
 export function Sidebar() {
     const [isOpen, setIsOpen] = useState(false)
+    const [siteSettings, setSiteSettings] = useState({ siteTitle: 'Finans ERP', logoUrl: '' })
     const pathname = usePathname()
+
+    // Fetch settings for logo and title
+    useEffect(() => {
+        fetch('/api/settings')
+            .then(res => res.json())
+            .then(data => {
+                setSiteSettings({
+                    siteTitle: data.siteTitle || 'Finans ERP',
+                    logoUrl: data.logoUrl || ''
+                })
+            })
+            .catch(() => { })
+    }, [])
 
     // Login sayfasinda sidebar gosterme
     if (pathname === '/login') {
@@ -49,9 +63,17 @@ export function Sidebar() {
                 md:translate-x-0
             `}>
                 <div className="p-6 border-b border-slate-700">
-                    <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 text-transparent bg-clip-text">
-                        Finans ERP
-                    </h1>
+                    {siteSettings.logoUrl ? (
+                        <img
+                            src={siteSettings.logoUrl}
+                            alt={siteSettings.siteTitle}
+                            className="h-10 max-w-[180px] object-contain"
+                        />
+                    ) : (
+                        <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-cyan-300 text-transparent bg-clip-text">
+                            {siteSettings.siteTitle}
+                        </h1>
+                    )}
                     <p className="text-xs text-slate-400 mt-1">Muhasebe & Finans</p>
                 </div>
 

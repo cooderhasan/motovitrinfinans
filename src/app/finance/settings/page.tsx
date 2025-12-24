@@ -34,7 +34,8 @@ export default function SettingsPage() {
     const [formData, setFormData] = useState({
         siteTitle: '',
         siteDescription: '',
-        faviconUrl: ''
+        faviconUrl: '',
+        logoUrl: ''
     })
 
     const { data: settings, isLoading } = useQuery({
@@ -47,7 +48,8 @@ export default function SettingsPage() {
             setFormData({
                 siteTitle: settings.siteTitle || '',
                 siteDescription: settings.siteDescription || '',
-                faviconUrl: settings.faviconUrl || ''
+                faviconUrl: settings.faviconUrl || '',
+                logoUrl: settings.logoUrl || ''
             })
         }
     }, [settings])
@@ -125,6 +127,45 @@ export default function SettingsPage() {
                                 placeholder="Finansal Yonetim Sistemi"
                             />
                         </div>
+                    </CardContent>
+                </Card>
+
+                {/* Firma Logosu */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <FileImage className="h-5 w-5" />
+                            Firma Logosu
+                        </CardTitle>
+                        <CardDescription>
+                            Sol menüde görünecek firma logosu
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="logoUrl">Logo URL</Label>
+                            <Input
+                                id="logoUrl"
+                                value={formData.logoUrl}
+                                onChange={(e) => setFormData(prev => ({ ...prev, logoUrl: e.target.value }))}
+                                placeholder="/logo.png veya https://..."
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Logo dosyasının yolu (önerilen boyut: 150x40 piksel)
+                            </p>
+                        </div>
+
+                        {formData.logoUrl && (
+                            <div className="flex items-center gap-2 p-4 bg-slate-900 rounded-lg">
+                                <span className="text-sm text-slate-400">Önizleme:</span>
+                                <img
+                                    src={formData.logoUrl}
+                                    alt="Logo"
+                                    className="h-10 max-w-[150px] object-contain"
+                                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }}
+                                />
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
 
