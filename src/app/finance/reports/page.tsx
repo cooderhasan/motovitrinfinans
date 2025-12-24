@@ -66,6 +66,19 @@ export default function ReportsPage() {
             return
         }
 
+        // Türkçe karakter dönüşümü (jsPDF varsayılan font UTF-8 desteklemiyor)
+        const turkishToAscii = (text: string) => {
+            const map: Record<string, string> = {
+                'ç': 'c', 'Ç': 'C',
+                'ğ': 'g', 'Ğ': 'G',
+                'ı': 'i', 'İ': 'I',
+                'ö': 'o', 'Ö': 'O',
+                'ş': 's', 'Ş': 'S',
+                'ü': 'u', 'Ü': 'U'
+            }
+            return text.replace(/[çÇğĞıİöÖşŞüÜ]/g, char => map[char] || char)
+        }
+
         const { default: jsPDF } = await import('jspdf')
         const { default: autoTable } = await import('jspdf-autotable')
 
@@ -77,14 +90,14 @@ export default function ReportsPage() {
 
         // Cari Bilgileri
         doc.setFontSize(12)
-        doc.text(`Cari: ${selectedCari?.title || '-'}`, 14, 32)
+        doc.text(`Cari: ${turkishToAscii(selectedCari?.title || '-')}`, 14, 32)
         doc.text(`Para Birimi: ${filter.currencyCode}`, 14, 40)
         doc.text(`Tarih: ${new Date().toLocaleDateString('tr-TR')}`, 14, 48)
 
         // Tablo
         const tableData = reportData.map((row: any) => [
             new Date(row.transactionDate).toLocaleDateString('tr-TR'),
-            row.description || '-',
+            turkishToAscii(row.description || '-'),
             row.debit > 0 ? row.debit.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) : '-',
             row.credit > 0 ? row.credit.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) : '-',
             row.balance.toLocaleString('tr-TR', { minimumFractionDigits: 2 })
@@ -110,7 +123,7 @@ export default function ReportsPage() {
         doc.setFont(undefined as any, 'bold')
         doc.text(`Son Bakiye: ${lastRow.balance.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} ${filter.currencyCode}`, 14, finalY)
 
-        doc.save(`ekstre_${selectedCari?.title || 'cari'}_${new Date().toISOString().split('T')[0]}.pdf`)
+        doc.save(`ekstre_${turkishToAscii(selectedCari?.title || 'cari')}_${new Date().toISOString().split('T')[0]}.pdf`)
     }
 
     return (

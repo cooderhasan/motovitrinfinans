@@ -105,6 +105,19 @@ export default function CariesPage() {
             return
         }
 
+        // Türkçe karakter dönüşümü (jsPDF varsayılan font UTF-8 desteklemiyor)
+        const turkishToAscii = (text: string) => {
+            const map: Record<string, string> = {
+                'ç': 'c', 'Ç': 'C',
+                'ğ': 'g', 'Ğ': 'G',
+                'ı': 'i', 'İ': 'I',
+                'ö': 'o', 'Ö': 'O',
+                'ş': 's', 'Ş': 'S',
+                'ü': 'u', 'Ü': 'U'
+            }
+            return text.replace(/[çÇğĞıİöÖşŞüÜ]/g, char => map[char] || char)
+        }
+
         const { default: jsPDF } = await import('jspdf')
         const { default: autoTable } = await import('jspdf-autotable')
 
@@ -116,8 +129,8 @@ export default function CariesPage() {
         doc.text(`Tarih: ${new Date().toLocaleDateString('tr-TR')}`, 14, 30)
 
         const tableData = caries.map((cari: any) => [
-            cari.title,
-            cari.type === 'CUSTOMER' ? 'Müşteri' : cari.type === 'SUPPLIER' ? 'Tedarikçi' : 'Personel',
+            turkishToAscii(cari.title || ''),
+            cari.type === 'CUSTOMER' ? 'Musteri' : cari.type === 'SUPPLIER' ? 'Tedarikci' : 'Personel',
             cari.defaultCurrency?.code,
             cari.isActive ? 'Aktif' : 'Pasif',
             Number(cari.openingBalance).toLocaleString('tr-TR', { minimumFractionDigits: 2 }),
@@ -125,7 +138,7 @@ export default function CariesPage() {
         ])
 
         autoTable(doc, {
-            head: [['Ünvan', 'Tip', 'Para Birimi', 'Durum', 'Açılış Bakiyesi', 'Güncel Bakiye']],
+            head: [['Unvan', 'Tip', 'Para Birimi', 'Durum', 'Acilis Bakiyesi', 'Guncel Bakiye']],
             body: tableData,
             startY: 35,
             styles: { fontSize: 9 },
