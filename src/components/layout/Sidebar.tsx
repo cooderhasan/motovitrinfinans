@@ -17,6 +17,11 @@ export function Sidebar() {
     const [isOpen, setIsOpen] = useState(false)
     const pathname = usePathname()
 
+    // Login sayfasinda sidebar gosterme
+    if (pathname === '/login') {
+        return null
+    }
+
     return (
         <>
             {/* Mobile menu button */}
@@ -58,8 +63,8 @@ export function Sidebar() {
                                 href={item.href}
                                 onClick={() => setIsOpen(false)}
                                 className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${isActive
-                                        ? 'bg-blue-600 text-white'
-                                        : 'text-slate-300 hover:bg-slate-800 hover:text-white'
+                                    ? 'bg-blue-600 text-white'
+                                    : 'text-slate-300 hover:bg-slate-800 hover:text-white'
                                     }`}
                             >
                                 <item.icon size={20} />
@@ -74,8 +79,8 @@ export function Sidebar() {
                         href="/finance/settings"
                         onClick={() => setIsOpen(false)}
                         className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${pathname === '/finance/settings'
-                                ? 'bg-blue-600 text-white'
-                                : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                            ? 'bg-blue-600 text-white'
+                            : 'text-slate-400 hover:text-white hover:bg-slate-800'
                             }`}
                     >
                         <Settings size={20} />

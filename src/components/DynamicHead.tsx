@@ -1,11 +1,16 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 
 export function DynamicHead() {
     const [settings, setSettings] = useState<any>(null)
+    const pathname = usePathname()
 
     useEffect(() => {
+        // Login sayfasinda ayar yukleme
+        if (pathname === '/login') return
+
         // Fetch settings
         fetch('/api/settings')
             .then(res => res.json())
