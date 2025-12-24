@@ -68,6 +68,19 @@ model Cari {
   type                      CariType
   title                     String
   
+  // İletişim Bilgileri
+  phone                     String?    @map("phone")
+  email                     String?    @map("email")
+  address                   String?    @map("address")
+  city                      String?    @map("city")
+  
+  // Vergi Bilgileri
+  taxNumber                 String?    @map("tax_number")
+  taxOffice                 String?    @map("tax_office")
+  
+  // Notlar
+  notes                     String?    @map("notes")
+  
   defaultCurrencyId         Int        @map("default_currency_id")
   openingBalance            Decimal    @default(0) @db.Decimal(18, 2) @map("opening_balance")
   openingBalanceCurrencyId  Int        @map("opening_balance_currency_id")

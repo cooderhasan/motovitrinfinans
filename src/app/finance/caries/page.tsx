@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
+import Link from 'next/link'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import {
@@ -21,7 +22,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Plus, FileSpreadsheet, FileText, Printer } from 'lucide-react'
+import { Plus, FileSpreadsheet, FileText, Printer, Pencil } from 'lucide-react'
 
 // Cari Listesi Çekme
 async function getCaries() {
@@ -246,6 +247,7 @@ export default function CariesPage() {
                             <TableHead>Durum</TableHead>
                             <TableHead className="text-right">Açılış Bakiyesi</TableHead>
                             <TableHead className="text-right">Güncel Bakiye</TableHead>
+                            <TableHead className="no-print"></TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -266,6 +268,13 @@ export default function CariesPage() {
                                     <span className={cari.currentBalance > 0 ? 'text-rose-600' : cari.currentBalance < 0 ? 'text-emerald-600' : ''}>
                                         {(cari.currentBalance || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
                                     </span>
+                                </TableCell>
+                                <TableCell className="no-print">
+                                    <Link href={`/finance/caries/${cari.id}/edit`}>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                            <Pencil className="h-4 w-4" />
+                                        </Button>
+                                    </Link>
                                 </TableCell>
                             </TableRow>
                         ))}
