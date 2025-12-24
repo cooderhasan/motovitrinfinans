@@ -50,6 +50,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Create startup script
 RUN echo '#!/bin/sh' > /app/start.sh && \
     echo 'cd /app && node_modules/.bin/prisma migrate deploy' >> /app/start.sh && \
+    echo 'node prisma/seed.js || echo "Seed skipped or failed"' >> /app/start.sh && \
     echo 'node server.js' >> /app/start.sh && \
     chmod +x /app/start.sh
 
