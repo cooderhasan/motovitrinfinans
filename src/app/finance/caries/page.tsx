@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useMemo } from 'react'
 import Link from 'next/link'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
@@ -20,9 +20,16 @@ import {
     DialogTrigger,
     DialogFooter
 } from '@/components/ui/dialog'
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Plus, FileSpreadsheet, FileText, Printer, Pencil } from 'lucide-react'
+import { Plus, FileSpreadsheet, FileText, Printer, Pencil, Search } from 'lucide-react'
 
 // Cari Listesi Çekme
 async function getCaries() {
@@ -50,6 +57,12 @@ export default function CariesPage() {
         defaultCurrencyCode: 'TL',
         openingBalance: 0
     })
+
+    // Filtreleme state'leri
+    const [searchQuery, setSearchQuery] = useState('')
+    const [typeFilter, setTypeFilter] = useState('ALL')
+    const [balanceFilter, setBalanceFilter] = useState('ALL')
+
     const tableRef = useRef<HTMLDivElement>(null)
 
     const queryClient = useQueryClient()
@@ -58,6 +71,30 @@ export default function CariesPage() {
         queryKey: ['caries'],
         queryFn: getCaries
     })
+
+    // Filtrelenmiş cari listesi
+    const filteredCaries = useMemo(() => {
+        if (!caries) return []
+
+        return caries.filter((cari: any) => {
+            // İsim araması
+            if (searchQuery && !cari.title.toLowerCase().includes(searchQuery.toLowerCase())) {
+                return false
+            }
+            // Tip filtresi
+            if (typeFilter !== 'ALL' && cari.type !== typeFilter) {
+                return false
+            }
+            // Bakiye filtresi
+            if (balanceFilter === 'DEBTOR' && (cari.currentBalance || 0) <= 0) {
+                return false
+            }
+            if (balanceFilter === 'CREDITOR' && (cari.currentBalance || 0) >= 0) {
+                return false
+            }
+            return true
+        })
+    }, [caries, searchQuery, typeFilter, balanceFilter])
 
     const createMutation = useMutation({
         mutationFn: createCari,
@@ -250,6 +287,45 @@ export default function CariesPage() {
                 <p className="text-sm text-gray-600">Tarih: {new Date().toLocaleDateString('tr-TR')}</p>
             </div>
 
+            {/* Filtreleme Alanı */}
+            <div className="flex flex-col sm:flex-row gap-4 p-4 bg-muted/50 rounded-lg no-print">
+                {/* Arama */}
+                <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        placeholder="Cari ara..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-10"
+                    />
+                </div>
+
+                {/* Tip Filtresi */}
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                    <SelectTrigger className="w-full sm:w-[180px]">
+                        <SelectValue placeholder="Cari Tipi" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="ALL">Tüm Tipler</SelectItem>
+                        <SelectItem value="CUSTOMER">Müşteri</SelectItem>
+                        <SelectItem value="SUPPLIER">Tedarikçi</SelectItem>
+                        <SelectItem value="EMPLOYEE">Personel</SelectItem>
+                    </SelectContent>
+                </Select>
+
+                {/* Bakiye Filtresi */}
+                <Select value={balanceFilter} onValueChange={setBalanceFilter}>
+                    <SelectTrigger className="w-full sm:w-[180px]">
+                        <SelectValue placeholder="Bakiye Durumu" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="ALL">Tüm Bakiyeler</SelectItem>
+                        <SelectItem value="DEBTOR">Borçlu Cariler</SelectItem>
+                        <SelectItem value="CREDITOR">Alacaklı Cariler</SelectItem>
+                    </SelectContent>
+                </Select>
+            </div>
+
             <div className="rounded-md border bg-white" ref={tableRef}>
                 <Table>
                     <TableHeader>
@@ -264,7 +340,7 @@ export default function CariesPage() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {caries?.map((cari: any) => (
+                        {filteredCaries?.map((cari: any) => (
                             <TableRow key={cari.id}>
                                 <TableCell className="font-medium">{cari.title}</TableCell>
                                 <TableCell>{cari.type === 'CUSTOMER' ? 'Müşteri' : cari.type === 'SUPPLIER' ? 'Tedarikçi' : 'Personel'}</TableCell>
@@ -291,9 +367,11 @@ export default function CariesPage() {
                                 </TableCell>
                             </TableRow>
                         ))}
-                        {!caries?.length && (
+                        {!filteredCaries?.length && (
                             <TableRow>
-                                <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">Kayıt bulunamadı.</TableCell>
+                                <TableCell colSpan={7} className="text-center h-24 text-muted-foreground">
+                                    {caries?.length ? 'Filtrelere uygun kayıt bulunamadı.' : 'Kayıt bulunamadı.'}
+                                </TableCell>
                             </TableRow>
                         )}
                     </TableBody>
