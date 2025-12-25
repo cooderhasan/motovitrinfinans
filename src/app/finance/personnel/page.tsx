@@ -244,15 +244,15 @@ export default function PersonnelPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight flex items-center gap-2">
-                        <Users className="h-8 w-8" /> Personel Yönetimi
+                    <h2 className="text-2xl sm:text-3xl font-bold tracking-tight flex items-center gap-2">
+                        <Users className="h-6 w-6 sm:h-8 sm:w-8" /> Personel Yönetimi
                     </h2>
-                    <p className="text-muted-foreground">Maaş takibi, avans ve işlem yönetimi</p>
+                    <p className="text-muted-foreground text-sm">Maaş takibi, avans ve işlem yönetimi</p>
                 </div>
-                <Button onClick={() => setAccrualDialogOpen(true)} className="bg-violet-600 hover:bg-violet-700">
-                    <Calculator className="mr-2 h-4 w-4" /> Ay Sonu Maaş Tahakkuku
+                <Button onClick={() => setAccrualDialogOpen(true)} className="bg-violet-600 hover:bg-violet-700 w-full sm:w-auto">
+                    <Calculator className="mr-2 h-4 w-4" /> Maaş Tahakkuku
                 </Button>
             </div>
 
@@ -325,7 +325,7 @@ export default function PersonnelPage() {
                         ) : loadingTx ? (
                             <div className="text-center py-8">Yükleniyor...</div>
                         ) : (
-                            <div className="max-h-[400px] overflow-y-auto">
+                            <div className="max-h-[400px] overflow-x-auto overflow-y-auto">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>

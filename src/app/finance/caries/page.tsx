@@ -194,13 +194,13 @@ export default function CariesPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between no-print">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 no-print">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Cari Hesaplar</h2>
-                    <p className="text-muted-foreground">Müşteri, Tedarikçi ve Personel yönetimi</p>
+                    <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Cari Hesaplar</h2>
+                    <p className="text-muted-foreground text-sm">Müşteri, Tedarikçi ve Personel yönetimi</p>
                 </div>
 
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                     <Button variant="outline" size="sm" onClick={handlePrint}>
                         <Printer className="mr-2 h-4 w-4" /> Yazdır
                     </Button>
@@ -326,7 +326,7 @@ export default function CariesPage() {
                 </Select>
             </div>
 
-            <div className="rounded-md border bg-white" ref={tableRef}>
+            <div className="rounded-md border bg-white overflow-x-auto" ref={tableRef}>
                 <Table>
                     <TableHeader>
                         <TableRow>

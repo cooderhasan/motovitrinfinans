@@ -35,19 +35,19 @@ export default function InvoicesIndexPage() {
 
     return (
         <div className="space-y-6">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h2 className="text-3xl font-bold tracking-tight">Faturalar & Fişler</h2>
-                    <p className="text-muted-foreground">Alış ve Satış hareketlerinizi yönetin.</p>
+                    <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Faturalar & Fişler</h2>
+                    <p className="text-muted-foreground text-sm">Alış ve Satış hareketlerinizi yönetin.</p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex flex-col sm:flex-row gap-2">
                     <Link href="/finance/invoices/new">
-                        <Button className="bg-orange-600 hover:bg-orange-700">
+                        <Button className="bg-orange-600 hover:bg-orange-700 w-full sm:w-auto">
                             <Plus className="mr-2 h-4 w-4" /> Yeni Alış Faturası
                         </Button>
                     </Link>
                     <Link href="/finance/sales/new">
-                        <Button className="bg-blue-600 hover:bg-blue-700">
+                        <Button className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto">
                             <Plus className="mr-2 h-4 w-4" /> Yeni Satış Fişi
                         </Button>
                     </Link>
@@ -61,7 +61,7 @@ export default function InvoicesIndexPage() {
                         <CardTitle className="text-xl font-semibold text-slate-800">Son Alış Faturaları</CardTitle>
                         <p className="text-sm text-slate-500">Tedarikçi borçlanmaları</p>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="overflow-x-auto">
                         {invoicesLoading ? (
                             <div className="text-center py-8 text-slate-400">Yükleniyor...</div>
                         ) : invoices?.length > 0 ? (
@@ -109,7 +109,7 @@ export default function InvoicesIndexPage() {
                         <CardTitle className="text-xl font-semibold text-slate-800">Son Satış Fişleri</CardTitle>
                         <p className="text-sm text-slate-500">Müşteri alacaklanmaları</p>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="overflow-x-auto">
                         {salesLoading ? (
                             <div className="text-center py-8 text-slate-400">Yükleniyor...</div>
                         ) : sales?.length > 0 ? (
