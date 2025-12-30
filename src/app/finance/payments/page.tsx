@@ -39,7 +39,8 @@ export default function PaymentsPage() {
         amount: '',
         currencyCode: 'TL',
         method: 'CASH',
-        date: new Date().toISOString().split('T')[0]
+        date: new Date().toISOString().split('T')[0],
+        description: ''
     })
 
     // Fetch Lists
@@ -52,7 +53,7 @@ export default function PaymentsPage() {
         mutationFn: createPayment,
         onSuccess: () => {
             alert('İşlem başarıyla kaydedildi.')
-            setFormData({ ...formData, amount: '', cariId: '' })
+            setFormData({ ...formData, amount: '', cariId: '', description: '' })
             queryClient.invalidateQueries({ queryKey: ['dashboard'] }) // Dashboard bakiyeleri güncellensin
         },
         onError: (err) => {
@@ -74,7 +75,8 @@ export default function PaymentsPage() {
             method: formData.method,
             amount: parseFloat(formData.amount),
             currencyCode: formData.currencyCode,
-            paymentDate: formData.date
+            paymentDate: formData.date,
+            description: formData.description
         })
     }
 
@@ -157,6 +159,15 @@ export default function PaymentsPage() {
                                         <option value="TRANSFER">Havale / EFT</option>
                                     </select>
                                 </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Açıklama</Label>
+                                <Input
+                                    placeholder="İşlem açıklaması giriniz..."
+                                    value={formData.description}
+                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                />
                             </div>
 
                             <Button
@@ -244,6 +255,15 @@ export default function PaymentsPage() {
                                         <option value="TRANSFER">Havale / EFT</option>
                                     </select>
                                 </div>
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label>Açıklama</Label>
+                                <Input
+                                    placeholder="İşlem açıklaması giriniz..."
+                                    value={formData.description}
+                                    onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                                />
                             </div>
 
                             <Button

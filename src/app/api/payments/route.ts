@@ -15,7 +15,8 @@ export async function POST(request: Request) {
             amount,
             currencyCode,
             exchangeRate,
-            paymentDate
+            paymentDate,
+            description
         } = body
 
         // 1. Validasyon
@@ -77,7 +78,8 @@ export async function POST(request: Request) {
                     amount: amount,
                     currencyId: currency.id,
                     exchangeRate: finalExchangeRate,
-                    paymentDate: new Date(paymentDate || new Date())
+                    paymentDate: new Date(paymentDate || new Date()),
+                    description: description
                 }
             })
 
@@ -91,7 +93,8 @@ export async function POST(request: Request) {
                     amount: amount,
                     currencyId: currency.id,
                     exchangeRate: finalExchangeRate,
-                    transactionDate: new Date(paymentDate || new Date())
+                    transactionDate: new Date(paymentDate || new Date()),
+                    description: description
                 }
             })
 

@@ -169,6 +169,7 @@ model Payment {
   currencyId    Int           @map("currency_id")
   exchangeRate  Decimal       @db.Decimal(18, 2) @map("exchange_rate")
   paymentDate   DateTime      @map("payment_date")
+  description   String?       @map("description")
   
   cari          Cari          @relation(fields: [cariId], references: [id])
   currency      Currency      @relation(fields: [currencyId], references: [id])
