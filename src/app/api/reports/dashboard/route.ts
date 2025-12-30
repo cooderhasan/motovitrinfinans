@@ -1,114 +1,109 @@
 
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
-import { TransactionType } from '@prisma/client'
 
 // GET /api/reports/dashboard
 // Dashboard ve Özet Raporlar için veri döner
 export async function GET(request: Request) {
     try {
-        // 1. Genel Bakiye Durumu (Tüm Cariler)
-        // Borçlar (Alacaklarımız) ve Alacaklar (Borçlarımız)
-        const transactions = await db.cashTransaction.groupBy({
-            by: ['transactionType', 'currencyId'],
-            _sum: {
-                amount: true
-            }
-        })
-
-        // Bakiyeleri Currency bazında topla
-        // DEBIT (Borç) -> Pozitif (Bizim alacağımız, Müşterinin borcu) veya Bizim kasaya giren?
-        // Müşteri Satış -> Customer DEBIT. (Müşteri Borçlandı). Bizim Alacağımız var.
-        // Tedarikçi Alış -> Supplier CREDIT. (Tedarikçi Alacaklandı). Bizim Borcumuz var.
-
-        // Toplam Alacak (Receivables) -> SUM(DEBIT) of Customers
-        // Toplam Borç (Payables) -> SUM(CREDIT) of Suppliers
-
-        // Ancak sistemde mixed transactionlar olabilir. En doğrusu:
-        // Net Bakiye = SUM(DEBIT) - SUM(CREDIT)
-        // Eğer > 0 ise "Borçlu" (Bize borcu var / Alacaklıyız)
-        // Eğer < 0 ise "Alacaklı" (Bizim borcumuz var)
-
-        const summaryByCurrency: any = {}
-
-        // Kurları çek (isimleri için)
+        // Kurları çek
         const currencies = await db.currency.findMany()
         const currencyMap = currencies.reduce((acc: any, cur) => {
             acc[cur.id] = cur.code
             return acc
         }, {})
 
-        // Hesaplama
-        transactions.forEach(t => {
-            const code = currencyMap[t.currencyId] || 'UNKNOWN'
-            if (!summaryByCurrency[code]) {
-                summaryByCurrency[code] = { totalDebit: 0, totalCredit: 0, balance: 0 }
-            }
-
-            const amount = t._sum.amount ? t._sum.amount.toNumber() : 0
-
-            if (t.transactionType === 'DEBIT') {
-                summaryByCurrency[code].totalDebit += amount
-                summaryByCurrency[code].balance += amount
-            } else {
-                summaryByCurrency[code].totalCredit += amount
-                summaryByCurrency[code].balance -= amount
-            }
-        })
-
-        // 2. En Borçlu Müşteriler (Top 5 Receivables)
-        // Karmaşık sorgu, şimdilik basit bir listeleme yapalım.
-        // SQL aggregate daha performanslı olur ama Prisma `groupBy` ile `cariId` bazında alabiliriz.
-
+        // 1. Tüm işlemlerin bakiyelerini Cari bazında grupla
         const cariBalances = await db.cashTransaction.groupBy({
             by: ['cariId', 'transactionType', 'currencyId'],
             _sum: { amount: true }
         })
 
-        // Bellekte işle (Büyük veri setleri için raw SQL yazılmalı, şimdilik MVP)
-        const cariMap: any = {}
+        // 2. Her Carinin her döviz cinsi için Net Bakiyesini hesapla
+        // CariId -> { TL: 500, USD: -100 }
+        const cariNetBalances: Record<string, Record<string, number>> = {}
 
         for (const cb of cariBalances) {
-            if (!cariMap[cb.cariId]) {
-                // Cari detayını çekmek pahalı olabilir, transaction bitince id listesiyle çekelim
-                cariMap[cb.cariId] = { TL: 0, USD: 0 }
-            }
-
-            const code = currencyMap[cb.currencyId]
+            const cariId = cb.cariId
+            const code = currencyMap[cb.currencyId] || 'UNKNOWN'
             const amount = cb._sum.amount ? cb._sum.amount.toNumber() : 0
 
-            if (code) {
-                if (cb.transactionType === 'DEBIT') {
-                    cariMap[cb.cariId][code] += amount
-                } else {
-                    cariMap[cb.cariId][code] -= amount
-                }
+            if (!cariNetBalances[cariId]) {
+                cariNetBalances[cariId] = {}
+            }
+            if (!cariNetBalances[cariId][code]) {
+                cariNetBalances[cariId][code] = 0
+            }
+
+            // DEBIT = Cari Borçlandı (Bizim Alacağımız Artar) -> +
+            // CREDIT = Cari Alacaklandı (Bizim Borcumuz Artar) -> -
+            if (cb.transactionType === 'DEBIT') {
+                cariNetBalances[cariId][code] += amount
+            } else {
+                cariNetBalances[cariId][code] -= amount
             }
         }
 
-        // Carileri getir
-        const cariIds = Object.keys(cariMap).map(id => parseInt(id))
-        const caries = await db.cari.findMany({
-            where: { id: { in: cariIds } },
-            select: { id: true, title: true, type: true }
+        // 3. Genel Dashboard Özeti Oluştur (Current Receivables / Payables)
+        // Pozitif Bakiyeler toplami -> Toplam Alacak (Current Receivables)
+        // Negatif Bakiyeler toplami -> Toplam Borç (Current Payables)
+
+        const summaryByCurrency: any = {}
+
+        Object.values(cariNetBalances).forEach(currencies => {
+            Object.entries(currencies).forEach(([code, balance]) => {
+                if (!summaryByCurrency[code]) {
+                    summaryByCurrency[code] = { totalDebit: 0, totalCredit: 0, balance: 0 }
+                }
+
+                // Balance pozitifse -> Bizim alacağımız var
+                if (balance > 0) {
+                    summaryByCurrency[code].totalDebit += balance
+                }
+                // Balance negatifse -> Bizim borcumuz var
+                else if (balance < 0) {
+                    summaryByCurrency[code].totalCredit += Math.abs(balance)
+                }
+
+                // Net Nakit Pozisyonu (Alacak - Borç)
+                summaryByCurrency[code].balance += balance
+            })
         })
 
-        // Sonuçları birleştir
+        // 4. En Borçlu Müşteriler ve Alacaklı Tedarikçiler Listesi Hazırla
+        // Cari detaylarını çekmemiz lazım
+        const cariIds = Object.keys(cariNetBalances).map(id => parseInt(id))
+
+        let caries: any[] = []
+        if (cariIds.length > 0) {
+            caries = await db.cari.findMany({
+                where: { id: { in: cariIds } },
+                select: { id: true, title: true, type: true }
+            })
+        }
+
         const detailedBalances = caries.map(c => ({
             ...c,
-            balances: cariMap[c.id]
+            balances: cariNetBalances[c.id.toString()] || {}
         }))
 
-        // Sıralama: En yüksek TL bakiyesi olanlar (Örnek)
+        // Sıralama
         const topDebtors = detailedBalances
-            .filter(c => c.balances.TL > 0)
-            .sort((a, b) => b.balances.TL - a.balances.TL)
+            .filter(c => (c.balances['TL'] || 0) > 0)
+            .sort((a, b) => (b.balances['TL'] || 0) - (a.balances['TL'] || 0))
             .slice(0, 5)
 
         const topCreditors = detailedBalances
-            .filter(c => c.balances.TL < 0)
-            .sort((a, b) => a.balances.TL - b.balances.TL) // En küçük (negatif) en başa
+            .filter(c => (c.balances['TL'] || 0) < 0)
+            .sort((a, b) => (a.balances['TL'] || 0) - (b.balances['TL'] || 0)) // En küçük (en borçlu olduğumuz)
             .slice(0, 5)
+            .map(c => ({
+                ...c,
+                balances: {
+                    ...c.balances,
+                    TL: Math.abs(c.balances['TL'] || 0) // UI'da pozitif göstermek için
+                }
+            }))
 
 
         return NextResponse.json({
