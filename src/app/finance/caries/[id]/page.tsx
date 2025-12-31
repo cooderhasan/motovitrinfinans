@@ -18,11 +18,11 @@ async function getCari(id: string) {
     return res.json()
 }
 
-async function getStatement(cariId: string) {
+async function getStatement(cariId: string, currencyCode: string = 'TL') {
     const res = await fetch(`/api/reports/statement`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cariId })
+        body: JSON.stringify({ cariId, currencyCode })
     })
     if (!res.ok) throw new Error('Ekstre alınamadı')
     return res.json()
@@ -72,8 +72,9 @@ export default function CariDetailPage({ params }: { params: Promise<{ id: strin
     })
 
     const { data: statementData, isLoading: loadingStatement } = useQuery({
-        queryKey: ['statement', id],
-        queryFn: () => getStatement(id)
+        queryKey: ['statement', id, cari?.defaultCurrencyCode],
+        queryFn: () => getStatement(id, cari?.defaultCurrencyCode || 'TL'),
+        enabled: !!cari // Sadece cari yüklendikten sonra çalışsın
     })
 
     const handleTransaction = (type: 'COLLECTION' | 'PAYMENT') => {
