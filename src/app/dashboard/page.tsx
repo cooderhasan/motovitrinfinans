@@ -82,6 +82,9 @@ export default function DashboardPage() {
                             <li><strong>Maaş Tahakkuku:</strong> Tek bir personele özel maaş tahakkuku yapabilirsiniz.</li>
                             <li><strong>Cari Detay:</strong> Cariler listesinde <span className="inline-block align-middle px-1.5 py-0.5 bg-blue-100 rounded text-xs">📄</span> ikonuna tıklayarak detay sayfasına gidebilir, buradan <strong>hızlı tahsilat</strong> ve <strong>ödeme</strong> yapabilirsiniz.</li>
                         </ul>
+                        <p className="mt-3 text-sm font-bold text-blue-900 animate-pulse">
+                            Beğendiyseniz Hasan'a Kuzu ISMARLAYABİLİRSİNİZ 🍖😋🐑
+                        </p>
                     </div>
                     <button
                         onClick={(e) => {
