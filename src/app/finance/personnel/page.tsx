@@ -56,11 +56,11 @@ async function updateTransaction(id: number, data: any) {
     return res.json()
 }
 
-async function accrueSalaries(month: number, year: number) {
+async function accrueSalaries(month: number, year: number, cariId?: number) {
     const res = await fetch('/api/salary/accrue', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ month, year })
+        body: JSON.stringify({ month, year, cariId })
     })
     if (!res.ok) throw new Error('Maaş tahakkuku yapılamadı')
     return res.json()
@@ -186,7 +186,11 @@ export default function PersonnelPage() {
     const handleSalaryAccrual = async () => {
         setAccruing(true)
         try {
-            const result = await accrueSalaries(accrualMonth, accrualYear)
+            const result = await accrueSalaries(
+                accrualMonth,
+                accrualYear,
+                selectedEmployee?.id
+            )
             alert(result.message)
             setAccrualDialogOpen(false)
             queryClient.invalidateQueries({ queryKey: ['employees'] })
@@ -217,7 +221,8 @@ export default function PersonnelPage() {
                 method: 'CASH',
                 amount: parseFloat(paymentForm.amount),
                 currencyCode: 'TL',
-                paymentDate: paymentForm.date
+                paymentDate: paymentForm.date,
+                description: paymentForm.description
             })
             alert('Ödeme başarıyla kaydedildi')
             setPaymentDialogOpen(false)
@@ -431,7 +436,10 @@ export default function PersonnelPage() {
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <p className="text-sm text-muted-foreground">
-                            Seçilen ay için tüm aktif personellere maaş borcu yazılacaktır.
+                            {selectedEmployee
+                                ? <span className="font-semibold text-rose-600">{selectedEmployee.title}</span>
+                                : "Tüm aktif personeller"
+                            } için maaş tahakkuku yapılacaktır.
                         </p>
                         <div className="grid grid-cols-2 gap-4">
                             <div className="grid gap-2">
@@ -495,6 +503,14 @@ export default function PersonnelPage() {
                                 placeholder="0.00"
                                 value={paymentForm.amount}
                                 onChange={(e) => setPaymentForm({ ...paymentForm, amount: e.target.value })}
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label>Açıklama</Label>
+                            <Input
+                                placeholder="Avans açıklaması (Opsiyonel)"
+                                value={paymentForm.description}
+                                onChange={(e) => setPaymentForm({ ...paymentForm, description: e.target.value })}
                             />
                         </div>
                         <div className="grid gap-2">

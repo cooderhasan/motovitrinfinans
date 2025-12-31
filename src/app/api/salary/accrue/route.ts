@@ -7,7 +7,7 @@ import { CurrencyCode } from '@prisma/client'
 export async function POST(request: Request) {
     try {
         const body = await request.json()
-        const { month, year } = body  // Format: month=12, year=2024
+        const { month, year, cariId } = body  // Format: month=12, year=2024, cariId?=(optional)
 
         if (!month || !year) {
             return NextResponse.json({
@@ -16,12 +16,19 @@ export async function POST(request: Request) {
         }
 
         // Tüm aktif personelleri çek (maaşı olanlar)
+        // Eğer cariId varsa sadece o personeli çek
+        const whereClause: any = {
+            type: 'EMPLOYEE',
+            isActive: true,
+            salary: { not: null }
+        }
+
+        if (cariId) {
+            whereClause.id = parseInt(cariId)
+        }
+
         const employees = await db.cari.findMany({
-            where: {
-                type: 'EMPLOYEE',
-                isActive: true,
-                salary: { not: null }
-            },
+            where: whereClause,
             include: {
                 defaultCurrency: true
             }
