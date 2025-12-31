@@ -67,6 +67,35 @@ export default function DashboardPage() {
                 </div>
             </div>
 
+            {/* Duyuru Alanı - 4 Ocak 2026'ya kadar görünür */}
+            {new Date() < new Date('2026-01-04') && (
+                <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-blue-100/50 rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl"></div>
+                    <div className="p-2 bg-blue-100 rounded-lg text-blue-600 z-10">
+                        <Sparkles className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1 z-10">
+                        <h3 className="font-semibold text-blue-900">Yeni Özellikler Yayında! 🎉</h3>
+                        <p className="text-sm text-blue-700 mt-1">Sizler için paneli geliştirmeye devam ediyoruz:</p>
+                        <ul className="mt-2 space-y-1 text-sm text-blue-800 list-disc list-inside">
+                            <li><strong>Personel Avans:</strong> Artık avans verirken açıklama girebilirsiniz.</li>
+                            <li><strong>Maaş Tahakkuku:</strong> Tek bir personele özel maaş tahakkuku yapabilirsiniz.</li>
+                            <li><strong>Cari Detay:</strong> Cariler listesinde <span className="inline-block align-middle px-1.5 py-0.5 bg-blue-100 rounded text-xs">📄</span> ikonuna tıklayarak detay sayfasına gidebilir, buradan <strong>hızlı tahsilat</strong> ve <strong>ödeme</strong> yapabilirsiniz.</li>
+                        </ul>
+                    </div>
+                    <button
+                        onClick={(e) => {
+                            const parent = e.currentTarget.parentElement;
+                            if (parent) parent.style.display = 'none';
+                        }}
+                        className="p-1 hover:bg-blue-100 rounded-lg text-blue-500 transition-colors z-10"
+                    >
+                        <span className="sr-only">Kapat</span>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 6 6 18" /><path d="m6 6 12 12" /></svg>
+                    </button>
+                </div>
+            )}
+
             {/* Summary Cards */}
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
                 {/* Alacak Card */}

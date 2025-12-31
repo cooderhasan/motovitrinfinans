@@ -359,11 +359,18 @@ export default function CariesPage() {
                                     </span>
                                 </TableCell>
                                 <TableCell className="no-print">
-                                    <Link href={`/finance/caries/${cari.id}/edit`}>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                                            <Pencil className="h-4 w-4" />
-                                        </Button>
-                                    </Link>
+                                    <div className="flex justify-end gap-2">
+                                        <Link href={`/finance/caries/${cari.id}`}>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+                                                <FileText className="h-4 w-4" />
+                                            </Button>
+                                        </Link>
+                                        <Link href={`/finance/caries/${cari.id}/edit`}>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                <Pencil className="h-4 w-4" />
+                                            </Button>
+                                        </Link>
+                                    </div>
                                 </TableCell>
                             </TableRow>
                         ))}

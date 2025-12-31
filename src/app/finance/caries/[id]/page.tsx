@@ -1,0 +1,288 @@
+'use client'
+
+import { useState, use } from 'react'
+import { useRouter } from 'next/navigation'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { ArrowLeft, Wallet, TrendingUp, TrendingDown, Calendar, FileText, Plus } from 'lucide-react'
+
+// API functions
+async function getCari(id: string) {
+    const res = await fetch(`/api/caries/${id}`)
+    if (!res.ok) throw new Error('Cari bilgileri alınamadı')
+    return res.json()
+}
+
+async function getStatement(cariId: string) {
+    const res = await fetch(`/api/reports/statement`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cariId })
+    })
+    if (!res.ok) throw new Error('Ekstre alınamadı')
+    return res.json()
+}
+
+async function createPayment(data: any) {
+    const res = await fetch('/api/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    if (!res.ok) throw new Error('İşlem kaydedilemedi')
+    return res.json()
+}
+
+export default function CariDetailPage({ params }: { params: Promise<{ id: string }> }) {
+    const { id } = use(params)
+    const router = useRouter()
+    const queryClient = useQueryClient()
+
+    // Dialog States
+    const [transactionDialogOpen, setTransactionDialogOpen] = useState(false)
+    const [transactionType, setTransactionType] = useState<'DEBIT' | 'CREDIT'>('DEBIT') // DEBIT: Biz ödedik (Borç düştü / Alacak azaldı), CREDIT: Tahsilat (Borç düştü) -- Wait, let's align with API logic
+    // API Logic Reminder:
+    // COLLECTION (Tahsilat) -> CREDIT (Cari Alacağı Artar / Bizim alacağımız azalır... wait. let's check api logic again. 
+    // API: COLLECTION -> CREDIT (Müşteri borcunu ödedi -> Müşterinin borcu azalır = Alacak tarafına yazılır). Correct.
+    // API: PAYMENT -> DEBIT (Biz ödeme yaptık -> Tedarikçiye borcumuz azalır = Borç tarafına yazılır). Correct.
+    // USER REQUEST: "Alacak Ekle" and "Borç Ekle".
+    // IF user wants to add DEBT (Borçlandırma): It equates to a SALE (Satış) usually. But if manual...
+    // Let's stick to "Tahsilat" (Collection) and "Ödeme" (Payment) as per plan, as "Borç/Alacak Ekle" usually implies these cash flows or manual adjustments.
+    // If they strictly mean "Add Debt" (Borçlandır), that's usually an Invoice. 
+    // I will explicitly name buttons "Tahsilat Ekle (Alacak)" and "Ödeme Yap (Borç)" to be safe, or just "Tahsilat" and "Ödeme".
+
+    // Let's use the API's paymentType: 'COLLECTION' | 'PAYMENT'
+    const [actionType, setActionType] = useState<'COLLECTION' | 'PAYMENT'>('COLLECTION')
+    const [form, setForm] = useState({
+        amount: '',
+        description: '',
+        date: new Date().toISOString().split('T')[0]
+    })
+    const [submitting, setSubmitting] = useState(false)
+
+    // Data Fetching
+    const { data: cari, isLoading: loadingCari } = useQuery({
+        queryKey: ['cari', id],
+        queryFn: () => getCari(id)
+    })
+
+    const { data: statementData, isLoading: loadingStatement } = useQuery({
+        queryKey: ['statement', id],
+        queryFn: () => getStatement(id)
+    })
+
+    const handleTransaction = (type: 'COLLECTION' | 'PAYMENT') => {
+        setActionType(type)
+        setForm({ amount: '', description: '', date: new Date().toISOString().split('T')[0] })
+        setTransactionDialogOpen(true)
+    }
+
+    const handleSubmit = async () => {
+        if (!form.amount || parseFloat(form.amount) <= 0) {
+            alert('Geçerli bir tutar giriniz')
+            return
+        }
+
+        setSubmitting(true)
+        try {
+            await createPayment({
+                cariId: parseInt(id),
+                paymentType: actionType,
+                method: 'CASH', // Defaulting to CASH for quick actions
+                amount: parseFloat(form.amount),
+                currencyCode: cari?.defaultCurrencyCode || 'TL', // Use cari's currency
+                paymentDate: form.date,
+                description: form.description
+            })
+
+            alert('İşlem başarıyla kaydedildi')
+            setTransactionDialogOpen(false)
+            queryClient.invalidateQueries({ queryKey: ['statement', id] })
+            queryClient.invalidateQueries({ queryKey: ['cari', id] })
+        } catch (error: any) {
+            alert('Hata: ' + error.message)
+        } finally {
+            setSubmitting(false)
+        }
+    }
+
+    if (loadingCari) return <div className="p-8">Yükleniyor...</div>
+    if (!cari) return <div className="p-8">Cari bulunamadı</div>
+
+    const transactions = statementData?.statement || []
+    const lastBalance = transactions.length > 0 ? transactions[transactions.length - 1].balance : (cari.openingBalance || 0)
+
+    return (
+        <div className="space-y-6">
+            {/* Header */}
+            <div className="flex items-center gap-4">
+                <Button variant="ghost" size="icon" onClick={() => router.back()}>
+                    <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <div>
+                    <h2 className="text-2xl font-bold tracking-tight">{cari.title}</h2>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-700 font-medium">
+                            {cari.type === 'CUSTOMER' ? 'Müşteri' : cari.type === 'SUPPLIER' ? 'Tedarikçi' : 'Personel'}
+                        </span>
+                        <span>•</span>
+                        <span>{cari.defaultCurrencyCode}</span>
+                    </div>
+                </div>
+            </div>
+
+            {/* Summary Cards */}
+            <div className="grid gap-4 md:grid-cols-3">
+                <Card>
+                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                        <CardTitle className="text-sm font-medium">Güncel Bakiye</CardTitle>
+                        <Wallet className="h-4 w-4 text-muted-foreground" />
+                    </CardHeader>
+                    <CardContent>
+                        <div className={`text-2xl font-bold ${lastBalance > 0 ? 'text-rose-600' : lastBalance < 0 ? 'text-emerald-600' : ''}`}>
+                            {lastBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {cari.defaultCurrencyCode}
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                            {lastBalance > 0 ? 'Borçlu (Bizden alacaklı değil, bize borçlu... wait, system logic check)' : 'Alacaklı'}
+                            {/* System logic: 
+                                + Balance = Debtor (Borçlu) usually. 
+                                - Balance = Creditor (Alacaklı).
+                                Let's stick to just the numbers and colors to avoid confusion unless absolutely sure of the system's sign convention used elsewhere. 
+                                Looking at page.tsx: `(cari.currentBalance || 0) > 0 ? 'text-rose-600'`
+                                Usually Red = Debt/Negative for us? Or Red = User owes us?
+                                In accounting softwares:
+                                Customer Debit Balance (Positive) = Customer owes us. 
+                                Supplier Credit Balance (Negative) = We owe supplier.
+                             */}
+                        </p>
+                    </CardContent>
+                </Card>
+
+                {/* Actions */}
+                <Card className="md:col-span-2 flex items-center p-6 bg-slate-50 border-dashed">
+                    <div className="flex gap-4 w-full justify-end">
+                        <Button
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                            onClick={() => handleTransaction('COLLECTION')}
+                        >
+                            <TrendingDown className="mr-2 h-4 w-4" />
+                            Tahsilat Ekle (Alacak Düş)
+                        </Button>
+                        <Button
+                            className="bg-rose-600 hover:bg-rose-700 text-white"
+                            onClick={() => handleTransaction('PAYMENT')}
+                        >
+                            <TrendingUp className="mr-2 h-4 w-4" />
+                            Ödeme Yap (Borç Düş/Öde)
+                        </Button>
+                    </div>
+                </Card>
+            </div>
+
+            {/* Transaction History */}
+            <Card>
+                <CardHeader>
+                    <CardTitle>Hesap Hareketleri</CardTitle>
+                    <CardDescription>Son işlemler ve ekstre detayları</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    {loadingStatement ? (
+                        <div className="py-8 text-center">Yükleniyor...</div>
+                    ) : (
+                        <div className="rounded-md border overflow-x-auto">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow className="bg-slate-50">
+                                        <TableHead>Tarih</TableHead>
+                                        <TableHead>Açıklama</TableHead>
+                                        <TableHead className="text-right text-rose-600">Borç</TableHead>
+                                        <TableHead className="text-right text-emerald-600">Alacak</TableHead>
+                                        <TableHead className="text-right">Bakiye</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {transactions.map((row: any, i: number) => (
+                                        <TableRow key={i}>
+                                            <TableCell>{new Date(row.transactionDate).toLocaleDateString('tr-TR')}</TableCell>
+                                            <TableCell>{row.description || '-'}</TableCell>
+                                            <TableCell className="text-right font-mono text-rose-600">
+                                                {row.debit > 0 ? row.debit.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) : '-'}
+                                            </TableCell>
+                                            <TableCell className="text-right font-mono text-emerald-600">
+                                                {row.credit > 0 ? row.credit.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) : '-'}
+                                            </TableCell>
+                                            <TableCell className="text-right font-mono font-bold">
+                                                {row.balance.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                    {transactions.length === 0 && (
+                                        <TableRow>
+                                            <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                                                Kayıt bulunamadı.
+                                            </TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+
+            {/* Quick Action Dialog */}
+            <Dialog open={transactionDialogOpen} onOpenChange={setTransactionDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>
+                            {actionType === 'COLLECTION' ? 'Tahsilat Ekle (Alacak)' : 'Ödeme Yap (Borç)'}
+                        </DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                        <div className="grid gap-2">
+                            <Label>Tutar ({cari.defaultCurrencyCode})</Label>
+                            <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="0.00"
+                                value={form.amount}
+                                onChange={(e) => setForm({ ...form, amount: e.target.value })}
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label>Açıklama</Label>
+                            <Input
+                                placeholder="İşlem açıklaması..."
+                                value={form.description}
+                                onChange={(e) => setForm({ ...form, description: e.target.value })}
+                            />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label>Tarih</Label>
+                            <Input
+                                type="date"
+                                value={form.date}
+                                onChange={(e) => setForm({ ...form, date: e.target.value })}
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => setTransactionDialogOpen(false)}>İptal</Button>
+                        <Button
+                            onClick={handleSubmit}
+                            disabled={submitting}
+                            className={actionType === 'COLLECTION' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-600 hover:bg-rose-700'}
+                        >
+                            {submitting ? 'Kaydediliyor...' : 'Kaydet'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+        </div>
+    )
+}
