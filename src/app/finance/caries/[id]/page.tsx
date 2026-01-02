@@ -36,8 +36,16 @@ async function createPayment(data: any) {
     })
 
     if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error(err.error || 'İşlem kaydedilemedi')
+        let errorMessage = 'İşlem kaydedilemedi';
+        try {
+            const err = await res.json();
+            if (err.error) errorMessage = err.error;
+            if (err.details) errorMessage += ` (${err.details})`;
+        } catch (e) {
+            const text = await res.text().catch(() => '');
+            errorMessage = `Sunucu Hatası (${res.status}): ${text.substring(0, 50)}...`;
+        }
+        throw new Error(errorMessage);
     }
     return res.json()
 }
