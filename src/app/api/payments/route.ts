@@ -8,6 +8,7 @@ import { CurrencyCode, TransactionType, PaymentType, CariType } from '@prisma/cl
 export async function POST(request: Request) {
     try {
         const body = await request.json()
+        console.log('[API/Payments] Body:', body)
         const {
             cariId,
             paymentType, // COLLECTION (Tahsilat) or PAYMENT (Ödeme)
@@ -25,7 +26,10 @@ export async function POST(request: Request) {
         }
 
         const cari = await db.cari.findUnique({ where: { id: cariId } })
-        if (!cari) return NextResponse.json({ error: 'Cari bulunamadı.' }, { status: 400 })
+        if (!cari) {
+            console.error('[API/Payments] Cari bulunamadı:', cariId)
+            return NextResponse.json({ error: 'Cari bulunamadı.' }, { status: 400 })
+        }
 
         const currency = await db.currency.findUnique({ where: { code: currencyCode as CurrencyCode } })
         if (!currency) return NextResponse.json({ error: 'Para birimi geçersiz.' }, { status: 400 })
@@ -103,8 +107,12 @@ export async function POST(request: Request) {
 
         return NextResponse.json(result, { status: 201 })
 
-    } catch (error) {
-        console.error('Ödeme işlemi hatası:', error)
-        return NextResponse.json({ error: 'İşlem sırasında bir hata oluştu.' }, { status: 500 })
+    } catch (error: any) {
+        console.error('Ödeme işlemi hatası Detaylı:', error)
+        return NextResponse.json({
+            error: 'İşlem sırasında bir hata oluştu.',
+            details: error.message,
+            stack: error.stack
+        }, { status: 500 })
     }
 }

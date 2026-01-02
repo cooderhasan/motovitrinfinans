@@ -34,7 +34,11 @@ async function createPayment(data: any) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     })
-    if (!res.ok) throw new Error('İşlem kaydedilemedi')
+
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || 'İşlem kaydedilemedi')
+    }
     return res.json()
 }
 
@@ -45,16 +49,7 @@ export default function CariDetailPage({ params }: { params: Promise<{ id: strin
 
     // Dialog States
     const [transactionDialogOpen, setTransactionDialogOpen] = useState(false)
-    const [transactionType, setTransactionType] = useState<'DEBIT' | 'CREDIT'>('DEBIT') // DEBIT: Biz ödedik (Borç düştü / Alacak azaldı), CREDIT: Tahsilat (Borç düştü) -- Wait, let's align with API logic
-    // API Logic Reminder:
-    // COLLECTION (Tahsilat) -> CREDIT (Cari Alacağı Artar / Bizim alacağımız azalır... wait. let's check api logic again. 
-    // API: COLLECTION -> CREDIT (Müşteri borcunu ödedi -> Müşterinin borcu azalır = Alacak tarafına yazılır). Correct.
-    // API: PAYMENT -> DEBIT (Biz ödeme yaptık -> Tedarikçiye borcumuz azalır = Borç tarafına yazılır). Correct.
-    // USER REQUEST: "Alacak Ekle" and "Borç Ekle".
-    // IF user wants to add DEBT (Borçlandırma): It equates to a SALE (Satış) usually. But if manual...
-    // Let's stick to "Tahsilat" (Collection) and "Ödeme" (Payment) as per plan, as "Borç/Alacak Ekle" usually implies these cash flows or manual adjustments.
-    // If they strictly mean "Add Debt" (Borçlandır), that's usually an Invoice. 
-    // I will explicitly name buttons "Tahsilat Ekle (Alacak)" and "Ödeme Yap (Borç)" to be safe, or just "Tahsilat" and "Ödeme".
+    const [transactionType, setTransactionType] = useState<'DEBIT' | 'CREDIT'>('DEBIT')
 
     // Let's use the API's paymentType: 'COLLECTION' | 'PAYMENT'
     const [actionType, setActionType] = useState<'COLLECTION' | 'PAYMENT'>('COLLECTION')
@@ -71,10 +66,12 @@ export default function CariDetailPage({ params }: { params: Promise<{ id: strin
         queryFn: () => getCari(id)
     })
 
+    const currencyCode = cari?.defaultCurrency?.code || 'TL'
+
     const { data: statementData, isLoading: loadingStatement } = useQuery({
-        queryKey: ['statement', id, cari?.defaultCurrencyCode],
-        queryFn: () => getStatement(id, cari?.defaultCurrencyCode || 'TL'),
-        enabled: !!cari // Sadece cari yüklendikten sonra çalışsın
+        queryKey: ['statement', id, currencyCode],
+        queryFn: () => getStatement(id, currencyCode),
+        enabled: !!cari
     })
 
     const handleTransaction = (type: 'COLLECTION' | 'PAYMENT') => {
@@ -94,9 +91,9 @@ export default function CariDetailPage({ params }: { params: Promise<{ id: strin
             await createPayment({
                 cariId: parseInt(id),
                 paymentType: actionType,
-                method: 'CASH', // Defaulting to CASH for quick actions
+                method: 'CASH',
                 amount: parseFloat(form.amount),
-                currencyCode: cari?.defaultCurrencyCode || 'TL', // Use cari's currency
+                currencyCode: currencyCode,
                 paymentDate: form.date,
                 description: form.description
             })
@@ -132,7 +129,7 @@ export default function CariDetailPage({ params }: { params: Promise<{ id: strin
                             {cari.type === 'CUSTOMER' ? 'Müşteri' : cari.type === 'SUPPLIER' ? 'Tedarikçi' : 'Personel'}
                         </span>
                         <span>•</span>
-                        <span>{cari.defaultCurrencyCode}</span>
+                        <span>{currencyCode}</span>
                     </div>
                 </div>
             </div>
@@ -146,7 +143,7 @@ export default function CariDetailPage({ params }: { params: Promise<{ id: strin
                     </CardHeader>
                     <CardContent>
                         <div className={`text-2xl font-bold ${lastBalance > 0 ? 'text-rose-600' : lastBalance < 0 ? 'text-emerald-600' : ''}`}>
-                            {lastBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {cari.defaultCurrencyCode}
+                            {lastBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {currencyCode}
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
                             {lastBalance > 0 ? 'Borçlu (Bizden alacaklı değil, bize borçlu... wait, system logic check)' : 'Alacaklı'}
@@ -246,7 +243,7 @@ export default function CariDetailPage({ params }: { params: Promise<{ id: strin
                     </DialogHeader>
                     <div className="space-y-4 py-4">
                         <div className="grid gap-2">
-                            <Label>Tutar ({cari.defaultCurrencyCode})</Label>
+                            <Label>Tutar ({currencyCode})</Label>
                             <Input
                                 type="number"
                                 step="0.01"
