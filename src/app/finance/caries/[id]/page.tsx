@@ -235,7 +235,7 @@ export default function CariDetailPage({ params }: { params: Promise<{ id: strin
                             {lastBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {currencyCode}
                         </div>
                         <p className="text-xs text-muted-foreground mt-1">
-                            {lastBalance > 0 ? 'Borçlu (Bizden alacaklı değil, bize borçlu... wait, system logic check)' : 'Alacaklı'}
+                            {lastBalance > 0 ? 'Borçlu' : 'Alacaklı'}
                             {/* System logic: 
                                 + Balance = Debtor (Borçlu) usually. 
                                 - Balance = Creditor (Alacaklı).
