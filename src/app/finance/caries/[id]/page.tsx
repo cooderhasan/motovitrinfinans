@@ -9,9 +9,41 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { ArrowLeft, Wallet, TrendingUp, TrendingDown, Calendar, FileText, Plus } from 'lucide-react'
+import { ArrowLeft, Wallet, TrendingUp, TrendingDown, Calendar, FileText, Plus, Trash2, Pencil } from 'lucide-react'
 
 // API functions
+async function deletePayment(id: number) {
+    const res = await fetch(`/api/payments/${id}`, {
+        method: 'DELETE'
+    })
+    if (!res.ok) {
+        let errorMessage = 'Silme işlemi başarısız';
+        try {
+            const err = await res.json();
+            if (err.error) errorMessage = err.error;
+        } catch (e) { }
+        throw new Error(errorMessage);
+    }
+    return res.json()
+}
+
+async function updatePayment(id: number, data: any) {
+    const res = await fetch(`/api/payments/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+
+    if (!res.ok) {
+        let errorMessage = 'Güncelleme işlemi başarısız';
+        try {
+            const err = await res.json();
+            if (err.error) errorMessage = err.error;
+        } catch (e) { }
+        throw new Error(errorMessage);
+    }
+    return res.json()
+}
 async function getCari(id: string) {
     const res = await fetch(`/api/caries/${id}`)
     if (!res.ok) throw new Error('Cari bilgileri alınamadı')
@@ -67,6 +99,8 @@ export default function CariDetailPage({ params }: { params: Promise<{ id: strin
         date: new Date().toISOString().split('T')[0]
     })
     const [submitting, setSubmitting] = useState(false)
+    const [editingId, setEditingId] = useState<number | null>(null)
+    const [deletingId, setDeletingId] = useState<number | null>(null)
 
     // Data Fetching
     const { data: cari, isLoading: loadingCari } = useQuery({
@@ -84,8 +118,45 @@ export default function CariDetailPage({ params }: { params: Promise<{ id: strin
 
     const handleTransaction = (type: 'COLLECTION' | 'PAYMENT') => {
         setActionType(type)
+        setEditingId(null)
         setForm({ amount: '', description: '', date: new Date().toISOString().split('T')[0] })
         setTransactionDialogOpen(true)
+    }
+
+    const handleEdit = (transaction: any) => {
+        // Determine type based on debit/credit or database info if available, 
+        // but here we can infer: 
+        // Collection = Credit > 0 (Customer pays us, Balance goes DOWN/NEGATIVE direction usually or just Credit entry)
+        // Payment = Debit > 0
+        // Let's stick to the logic used in handleTransaction helper or API.
+
+        // API: COLLECTION -> CREDIT, PAYMENT -> DEBIT
+        const type = transaction.credit > 0 ? 'COLLECTION' : 'PAYMENT'
+
+        setActionType(type)
+        setEditingId(transaction.sourceId)
+        setForm({
+            amount: (transaction.credit > 0 ? transaction.credit : transaction.debit).toString(),
+            description: transaction.description,
+            date: new Date(transaction.transactionDate).toISOString().split('T')[0]
+        })
+        setTransactionDialogOpen(true)
+    }
+
+    const handleDelete = async (sourceId: number) => {
+        if (!window.confirm('Bu işlemi silmek istediğinize emin misiniz?')) return
+
+        setDeletingId(sourceId)
+        try {
+            await deletePayment(sourceId)
+            queryClient.invalidateQueries({ queryKey: ['statement', id] })
+            queryClient.invalidateQueries({ queryKey: ['cari', id] })
+            alert('İşlem silindi')
+        } catch (error: any) {
+            alert('Hata: ' + error.message)
+        } finally {
+            setDeletingId(null)
+        }
     }
 
     const handleSubmit = async () => {
@@ -96,17 +167,27 @@ export default function CariDetailPage({ params }: { params: Promise<{ id: strin
 
         setSubmitting(true)
         try {
-            await createPayment({
-                cariId: parseInt(id),
-                paymentType: actionType,
-                method: 'CASH',
-                amount: parseFloat(form.amount),
-                currencyCode: currencyCode,
-                paymentDate: form.date,
-                description: form.description
-            })
-
-            alert('İşlem başarıyla kaydedildi')
+            if (editingId) {
+                // UPDATE logic
+                await updatePayment(editingId, {
+                    amount: parseFloat(form.amount),
+                    description: form.description,
+                    paymentDate: form.date
+                })
+                alert('İşlem güncellendi')
+            } else {
+                // CREATE logic
+                await createPayment({
+                    cariId: parseInt(id),
+                    paymentType: actionType,
+                    method: 'CASH',
+                    amount: parseFloat(form.amount),
+                    currencyCode: currencyCode,
+                    paymentDate: form.date,
+                    description: form.description
+                })
+                alert('İşlem başarıyla kaydedildi')
+            }
             setTransactionDialogOpen(false)
             queryClient.invalidateQueries({ queryKey: ['statement', id] })
             queryClient.invalidateQueries({ queryKey: ['cari', id] })
@@ -209,6 +290,7 @@ export default function CariDetailPage({ params }: { params: Promise<{ id: strin
                                         <TableHead className="text-right text-rose-600">Borç</TableHead>
                                         <TableHead className="text-right text-emerald-600">Alacak</TableHead>
                                         <TableHead className="text-right">Bakiye</TableHead>
+                                        <TableHead className="w-[100px]"></TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -224,6 +306,33 @@ export default function CariDetailPage({ params }: { params: Promise<{ id: strin
                                             </TableCell>
                                             <TableCell className="text-right font-mono font-bold">
                                                 {row.balance.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                                            </TableCell>
+                                            <TableCell>
+                                                {row.source === 'payment' && (
+                                                    <div className="flex justify-end gap-2">
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                                                            onClick={() => handleEdit(row)}
+                                                        >
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8 text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                            onClick={() => handleDelete(row.sourceId)}
+                                                            disabled={deletingId === row.sourceId}
+                                                        >
+                                                            {deletingId === row.sourceId ? (
+                                                                <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                                                            ) : (
+                                                                <Trash2 className="h-4 w-4" />
+                                                            )}
+                                                        </Button>
+                                                    </div>
+                                                )}
                                             </TableCell>
                                         </TableRow>
                                     ))}
@@ -246,7 +355,10 @@ export default function CariDetailPage({ params }: { params: Promise<{ id: strin
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>
-                            {actionType === 'COLLECTION' ? 'Tahsilat Ekle (Alacak)' : 'Ödeme Yap (Borç)'}
+                            {editingId
+                                ? 'İşlemi Düzenle'
+                                : (actionType === 'COLLECTION' ? 'Tahsilat Ekle (Alacak)' : 'Ödeme Yap (Borç)')
+                            }
                         </DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4 py-4">
