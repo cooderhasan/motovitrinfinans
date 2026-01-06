@@ -307,7 +307,8 @@ export default function NewInvoicePage() {
                                                 const vat = (base - disc) * (item.vatRate / 100)
                                                 // Virgülden sonra 2 hane gösterimi için, ama input değeri number olmalı
                                                 // Hassas hesaplama için raw değeri kullanıp yuvarlama yapabiliriz
-                                                return (base - disc + vat).toFixed(2)
+                                                const val = base - disc + vat
+                                                return Math.round(val * 100) / 100
                                             })()}
                                             onChange={(e) => {
                                                 const newTotal = parseFloat(e.target.value) || 0
