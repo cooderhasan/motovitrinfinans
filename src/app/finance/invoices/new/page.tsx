@@ -287,13 +287,36 @@ export default function NewInvoicePage() {
                                         </select>
                                     </TableCell>
                                     <TableCell className="text-right font-medium">
-                                        {/* Satır Tutarı: (Miktar * Birim Fiyat - İskonto) + KDV */}
-                                        {(() => {
-                                            const base = item.quantity * item.unitPrice
-                                            const disc = base * (discountRate / 100)
-                                            const vat = (base - disc) * (item.vatRate / 100)
-                                            return (base - disc + vat).toLocaleString('tr-TR', { minimumFractionDigits: 2 })
-                                        })()}
+                                        <Input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            className="text-right font-medium"
+                                            value={(() => {
+                                                const base = item.quantity * item.unitPrice
+                                                const disc = base * (discountRate / 100)
+                                                const vat = (base - disc) * (item.vatRate / 100)
+                                                // Virgülden sonra 2 hane gösterimi için, ama input değeri number olmalı
+                                                // Hassas hesaplama için raw değeri kullanıp yuvarlama yapabiliriz
+                                                return (base - disc + vat).toFixed(2)
+                                            })()}
+                                            onChange={(e) => {
+                                                const newTotal = parseFloat(e.target.value) || 0
+                                                // Reverse Calculation:
+                                                // Total = (Qty * Price) * (1 - Disc%) * (1 + VAT%)
+                                                // Price = Total / (Qty * (1 - Disc%) * (1 + VAT%))
+
+                                                const quantity = item.quantity || 1
+                                                const discMultiplier = 1 - (discountRate / 100)
+                                                const vatMultiplier = 1 + (item.vatRate / 100)
+                                                const denominator = quantity * discMultiplier * vatMultiplier
+
+                                                if (denominator !== 0) {
+                                                    const newUnitPrice = newTotal / denominator
+                                                    handleItemChange(index, 'unitPrice', newUnitPrice)
+                                                }
+                                            }}
+                                        />
                                     </TableCell>
                                     <TableCell>
                                         <Button
