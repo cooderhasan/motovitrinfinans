@@ -38,7 +38,7 @@ export async function PUT(
         const { id } = await params
         const invoiceId = parseInt(id)
         const body = await request.json()
-        const { supplierId, invoiceDate, currencyCode, items } = body
+        const { supplierId, invoiceDate, currencyCode, discountRate, items } = body
 
         // 1. Mevcut faturayı bul
         const existingInvoice = await db.invoice.findUnique({
@@ -70,13 +70,28 @@ export async function PUT(
 
         // 4. Yeni toplam hesapla
         let totalAmount = 0
+        const finalDiscountRate = discountRate ? parseFloat(discountRate) : 0
+
         const invoiceItemsData = items.map((item: any) => {
-            const lineTotal = item.quantity * item.unitPrice
+            const quantity = parseFloat(item.quantity)
+            const unitPrice = parseFloat(item.unitPrice)
+            const vatRate = parseInt(item.vatRate) || 0
+
+            const baseAmount = quantity * unitPrice
+            const discountAmount = baseAmount * (finalDiscountRate / 100)
+            const discountedBase = baseAmount - discountAmount
+            const vatAmount = discountedBase * (vatRate / 100)
+
+            const lineTotal = discountedBase + vatAmount
+
             totalAmount += lineTotal
+
             return {
+                stockCode: item.stockCode,
                 productName: item.productName,
-                quantity: item.quantity,
-                unitPrice: item.unitPrice,
+                quantity: quantity,
+                unitPrice: unitPrice,
+                vatRate: vatRate,
                 lineTotal: lineTotal
             }
         })
@@ -105,6 +120,7 @@ export async function PUT(
                     currencyId: currency.id,
                     exchangeRate: exchangeRate,
                     totalAmount: totalAmount,
+                    discountRate: finalDiscountRate,
                     items: {
                         create: invoiceItemsData
                     }

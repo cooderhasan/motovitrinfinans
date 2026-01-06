@@ -55,7 +55,8 @@ export default function EditInvoicePage() {
     const [supplierId, setSupplierId] = useState('')
     const [invoiceDate, setInvoiceDate] = useState('')
     const [currencyCode, setCurrencyCode] = useState('TL')
-    const [items, setItems] = useState([{ productName: '', quantity: 1, unitPrice: 0 }])
+    const [discountRate, setDiscountRate] = useState(0)
+    const [items, setItems] = useState([{ stockCode: '', productName: '', quantity: 1, unitPrice: 0, vatRate: 20 }])
 
     const { data: invoice, isLoading: invoiceLoading } = useQuery({
         queryKey: ['invoice', invoiceId],
@@ -74,11 +75,14 @@ export default function EditInvoicePage() {
             setSupplierId(invoice.supplierId?.toString() || '')
             setInvoiceDate(new Date(invoice.invoiceDate).toISOString().split('T')[0])
             setCurrencyCode(invoice.currency?.code || 'TL')
+            setDiscountRate(Number(invoice.discountRate) || 0)
             if (invoice.items?.length > 0) {
                 setItems(invoice.items.map((item: any) => ({
+                    stockCode: item.stockCode || '',
                     productName: item.productName,
                     quantity: Number(item.quantity),
-                    unitPrice: Number(item.unitPrice)
+                    unitPrice: Number(item.unitPrice),
+                    vatRate: Number(item.vatRate) || 0
                 })))
             }
         }
@@ -106,12 +110,29 @@ export default function EditInvoicePage() {
         }
     })
 
-    const calculateTotal = () => {
-        return items.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0)
+    const calculateTotals = () => {
+        let subTotal = 0
+        let totalDiscount = 0
+        let totalVat = 0
+        let grandTotal = 0
+
+        items.forEach(item => {
+            const baseAmount = item.quantity * item.unitPrice
+            const discountAmount = baseAmount * (discountRate / 100)
+            const discountedBase = baseAmount - discountAmount
+            const vatAmount = discountedBase * (item.vatRate / 100)
+
+            subTotal += baseAmount
+            totalDiscount += discountAmount
+            totalVat += vatAmount
+            grandTotal += discountedBase + vatAmount
+        })
+
+        return { subTotal, totalDiscount, totalVat, grandTotal }
     }
 
     const handleAddItem = () => {
-        setItems([...items, { productName: '', quantity: 1, unitPrice: 0 }])
+        setItems([...items, { stockCode: '', productName: '', quantity: 1, unitPrice: 0, vatRate: 20 }])
     }
 
     const handleRemoveItem = (index: number) => {
@@ -141,7 +162,14 @@ export default function EditInvoicePage() {
             supplierId: parseInt(supplierId),
             invoiceDate: invoiceDate,
             currencyCode: currencyCode,
-            items: validItems
+            discountRate: discountRate,
+            items: validItems.map(item => ({
+                stockCode: item.stockCode,
+                productName: item.productName,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+                vatRate: item.vatRate
+            }))
         })
     }
 
@@ -223,11 +251,37 @@ export default function EditInvoicePage() {
                         <CardTitle>Özet</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="flex flex-col items-center justify-center h-full space-y-2">
-                            <span className="text-sm text-muted-foreground">Genel Toplam</span>
-                            <span className="text-4xl font-bold text-slate-800">
-                                {calculateTotal().toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {currencyCode}
-                            </span>
+                        <div className="flex flex-col w-full space-y-3">
+                            <div className="flex flex-col gap-1">
+                                <Label className="text-xs text-muted-foreground">İskonto Oranı (%)</Label>
+                                <Input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    step="1"
+                                    value={discountRate}
+                                    onChange={(e) => setDiscountRate(parseFloat(e.target.value) || 0)}
+                                    className="h-8"
+                                />
+                            </div>
+                            <div className="space-y-1 text-sm pt-2 border-t">
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Ara Toplam:</span>
+                                    <span>{calculateTotals().subTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {currencyCode}</span>
+                                </div>
+                                <div className="flex justify-between text-red-500">
+                                    <span>İskonto:</span>
+                                    <span>-{calculateTotals().totalDiscount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {currencyCode}</span>
+                                </div>
+                                <div className="flex justify-between text-blue-600">
+                                    <span>KDV Toplam:</span>
+                                    <span>+{calculateTotals().totalVat.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {currencyCode}</span>
+                                </div>
+                                <div className="flex justify-between font-bold text-lg pt-2 border-t">
+                                    <span>Genel Toplam:</span>
+                                    <span>{calculateTotals().grandTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {currencyCode}</span>
+                                </div>
+                            </div>
                         </div>
                     </CardContent>
                 </Card>
@@ -244,9 +298,11 @@ export default function EditInvoicePage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="w-[40%]">Ürün / Hizmet Adı</TableHead>
-                                <TableHead className="w-[20%]">Miktar</TableHead>
-                                <TableHead className="w-[20%]">Birim Fiyat</TableHead>
+                                <TableHead className="w-[15%]">Stok Kodu</TableHead>
+                                <TableHead className="w-[30%]">Ürün / Hizmet Adı</TableHead>
+                                <TableHead className="w-[15%]">Miktar</TableHead>
+                                <TableHead className="w-[15%]">Birim Fiyat</TableHead>
+                                <TableHead className="w-[10%]">KDV (%)</TableHead>
                                 <TableHead className="w-[15%] text-right">Tutar</TableHead>
                                 <TableHead className="w-[5%]"></TableHead>
                             </TableRow>
@@ -254,6 +310,13 @@ export default function EditInvoicePage() {
                         <TableBody>
                             {items.map((item, index) => (
                                 <TableRow key={index}>
+                                    <TableCell>
+                                        <Input
+                                            placeholder="Stok Kodu"
+                                            value={item.stockCode}
+                                            onChange={(e) => handleItemChange(index, 'stockCode', e.target.value)}
+                                        />
+                                    </TableCell>
                                     <TableCell>
                                         <Input
                                             placeholder="Örn: Sunucu Bakım Bedeli"
@@ -278,8 +341,45 @@ export default function EditInvoicePage() {
                                             onChange={(e) => handleItemChange(index, 'unitPrice', parseFloat(e.target.value))}
                                         />
                                     </TableCell>
+                                    <TableCell>
+                                        <select
+                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                            value={item.vatRate}
+                                            onChange={(e) => handleItemChange(index, 'vatRate', parseInt(e.target.value))}
+                                        >
+                                            <option value="0">%0</option>
+                                            <option value="1">%1</option>
+                                            <option value="10">%10</option>
+                                            <option value="20">%20</option>
+                                        </select>
+                                    </TableCell>
                                     <TableCell className="text-right font-medium">
-                                        {(item.quantity * item.unitPrice).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                                        <Input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            className="text-right font-medium"
+                                            value={(() => {
+                                                const base = item.quantity * item.unitPrice
+                                                const disc = base * (discountRate / 100)
+                                                const vat = (base - disc) * (item.vatRate / 100)
+                                                const val = base - disc + vat
+                                                return Math.round(val * 100) / 100
+                                            })()}
+                                            onChange={(e) => {
+                                                const newTotal = parseFloat(e.target.value) || 0
+                                                // Reverse Calculation
+                                                const quantity = item.quantity || 1
+                                                const discMultiplier = 1 - (discountRate / 100)
+                                                const vatMultiplier = 1 + (item.vatRate / 100)
+                                                const denominator = quantity * discMultiplier * vatMultiplier
+
+                                                if (denominator !== 0) {
+                                                    const newUnitPrice = newTotal / denominator
+                                                    handleItemChange(index, 'unitPrice', newUnitPrice)
+                                                }
+                                            }}
+                                        />
                                     </TableCell>
                                     <TableCell>
                                         <Button
