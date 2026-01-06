@@ -86,6 +86,7 @@ export async function POST(request: Request) {
             totalAmount += lineTotal
 
             return {
+                stockCode: item.stockCode,
                 productName: item.productName,
                 quantity: quantity,
                 unitPrice: unitPrice,

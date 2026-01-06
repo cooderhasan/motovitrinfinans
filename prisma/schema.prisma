@@ -123,6 +123,7 @@ model InvoiceItem {
   id          Int      @id @default(autoincrement())
   invoiceId   Int      @map("invoice_id")
   productName String   @map("product_name")
+  stockCode   String?  @map("stock_code")
   quantity    Decimal  @db.Decimal(18, 2)
   unitPrice   Decimal  @db.Decimal(18, 2) @map("unit_price")
   vatRate     Int      @default(0) @map("vat_rate") // 0, 1, 10, 20

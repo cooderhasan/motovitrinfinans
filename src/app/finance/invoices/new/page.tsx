@@ -41,7 +41,7 @@ export default function NewInvoicePage() {
     const [currencyCode, setCurrencyCode] = useState('TL')
     const [discountRate, setDiscountRate] = useState(0)
     const [items, setItems] = useState([
-        { productName: '', quantity: 1, unitPrice: 0, vatRate: 20 }
+        { stockCode: '', productName: '', quantity: 1, unitPrice: 0, vatRate: 20 }
     ])
 
     const { data: suppliers } = useQuery({
@@ -83,7 +83,7 @@ export default function NewInvoicePage() {
     }
 
     const handleAddItem = () => {
-        setItems([...items, { productName: '', quantity: 1, unitPrice: 0, vatRate: 20 }])
+        setItems([...items, { stockCode: '', productName: '', quantity: 1, unitPrice: 0, vatRate: 20 }])
     }
 
     const handleRemoveItem = (index: number) => {
@@ -116,6 +116,7 @@ export default function NewInvoicePage() {
             currencyCode: currencyCode,
             discountRate: discountRate,
             items: validItems.map(item => ({
+                stockCode: item.stockCode,
                 productName: item.productName,
                 quantity: item.quantity,
                 unitPrice: item.unitPrice,
@@ -239,7 +240,8 @@ export default function NewInvoicePage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="w-[30%]">Ürün / Hizmet Adı</TableHead>
+                                <TableHead className="w-[15%]">Stok Kodu</TableHead>
+                                <TableHead className="w-[20%]">Ürün / Hizmet Adı</TableHead>
                                 <TableHead className="w-[15%]">Miktar</TableHead>
                                 <TableHead className="w-[15%]">Birim Fiyat</TableHead>
                                 <TableHead className="w-[15%]">KDV (%)</TableHead>
@@ -250,6 +252,13 @@ export default function NewInvoicePage() {
                         <TableBody>
                             {items.map((item, index) => (
                                 <TableRow key={index}>
+                                    <TableCell>
+                                        <Input
+                                            placeholder="Stok Kodu"
+                                            value={item.stockCode}
+                                            onChange={(e) => handleItemChange(index, 'stockCode', e.target.value)}
+                                        />
+                                    </TableCell>
                                     <TableCell>
                                         <Input
                                             placeholder="Örn: Sunucu Bakım Bedeli"
