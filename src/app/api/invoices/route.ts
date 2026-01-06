@@ -32,6 +32,7 @@ export async function POST(request: Request) {
             supplierId,
             invoiceDate,
             currencyCode,
+            discountRate,
             exchangeRate, // Opsiyonel, gönderilmezse sistemden alınır
             items
         } = body
@@ -51,7 +52,6 @@ export async function POST(request: Request) {
 
         // 2. Kur Yönetimi
         // Eğer kur manuel girilmemişse, o günkü en son kuru veritabanından bulmaya çalış
-        // Basitlik için: şimdilik manuel girilmediyse 1 kabul edeceğiz veya son kuru alacağız.
         let finalExchangeRate = exchangeRate
         if (!finalExchangeRate) {
             // Sistemdeki son kur
@@ -66,15 +66,30 @@ export async function POST(request: Request) {
             }
         }
 
-        // 3. Toplam Tutar Hesaplama
+        // 3. Toplam Tutar Hesaplama (KDV ve İskonto Dahil)
         let totalAmount = 0
+        const finalDiscountRate = discountRate ? parseFloat(discountRate) : 0
+
         const invoiceItemsData = items.map((item: any) => {
-            const lineTotal = item.quantity * item.unitPrice
+            const quantity = parseFloat(item.quantity)
+            const unitPrice = parseFloat(item.unitPrice)
+            const vatRate = parseInt(item.vatRate) || 0
+
+            const baseAmount = quantity * unitPrice
+            const discountAmount = baseAmount * (finalDiscountRate / 100)
+            const discountedBase = baseAmount - discountAmount
+            const vatAmount = discountedBase * (vatRate / 100)
+
+            // Satır Toplamı (İskonto düşülmüş + KDV eklenmiş)
+            const lineTotal = discountedBase + vatAmount
+
             totalAmount += lineTotal
+
             return {
                 productName: item.productName,
-                quantity: item.quantity,
-                unitPrice: item.unitPrice,
+                quantity: quantity,
+                unitPrice: unitPrice,
+                vatRate: vatRate,
                 lineTotal: lineTotal
             }
         })
@@ -89,6 +104,7 @@ export async function POST(request: Request) {
                     currencyId: currency.id,
                     exchangeRate: finalExchangeRate,
                     totalAmount: totalAmount,
+                    discountRate: finalDiscountRate,
                     items: {
                         create: invoiceItemsData
                     }

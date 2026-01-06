@@ -39,8 +39,9 @@ export default function NewInvoicePage() {
     const [supplierId, setSupplierId] = useState('')
     const [invoiceDate, setInvoiceDate] = useState(new Date().toISOString().split('T')[0])
     const [currencyCode, setCurrencyCode] = useState('TL')
+    const [discountRate, setDiscountRate] = useState(0)
     const [items, setItems] = useState([
-        { productName: '', quantity: 1, unitPrice: 0 }
+        { productName: '', quantity: 1, unitPrice: 0, vatRate: 20 }
     ])
 
     const { data: suppliers } = useQuery({
@@ -60,12 +61,29 @@ export default function NewInvoicePage() {
     })
 
     // Hesaplamalar
-    const calculateTotal = () => {
-        return items.reduce((acc, item) => acc + (item.quantity * item.unitPrice), 0)
+    const calculateTotals = () => {
+        let subTotal = 0
+        let totalDiscount = 0
+        let totalVat = 0
+        let grandTotal = 0
+
+        items.forEach(item => {
+            const baseAmount = item.quantity * item.unitPrice
+            const discountAmount = baseAmount * (discountRate / 100)
+            const discountedBase = baseAmount - discountAmount
+            const vatAmount = discountedBase * (item.vatRate / 100)
+
+            subTotal += baseAmount
+            totalDiscount += discountAmount
+            totalVat += vatAmount
+            grandTotal += discountedBase + vatAmount
+        })
+
+        return { subTotal, totalDiscount, totalVat, grandTotal }
     }
 
     const handleAddItem = () => {
-        setItems([...items, { productName: '', quantity: 1, unitPrice: 0 }])
+        setItems([...items, { productName: '', quantity: 1, unitPrice: 0, vatRate: 20 }])
     }
 
     const handleRemoveItem = (index: number) => {
@@ -96,7 +114,13 @@ export default function NewInvoicePage() {
             supplierId: parseInt(supplierId),
             invoiceDate: invoiceDate,
             currencyCode: currencyCode,
-            items: validItems
+            discountRate: discountRate,
+            items: validItems.map(item => ({
+                productName: item.productName,
+                quantity: item.quantity,
+                unitPrice: item.unitPrice,
+                vatRate: item.vatRate
+            }))
         }
 
         createMutation.mutate(payload)
@@ -165,13 +189,39 @@ export default function NewInvoicePage() {
                         <CardTitle>Özet</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="flex flex-col items-center justify-center h-full space-y-2">
-                            <span className="text-sm text-muted-foreground">Genel Toplam</span>
-                            <span className="text-4xl font-bold text-slate-800">
-                                {calculateTotal().toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {currencyCode}
-                            </span>
-                            <p className="text-xs text-slate-400 text-center max-w-[200px]">
-                                * Kur bilgisi işlem kaydedildiği anda sabitlenecektir.
+                        <div className="flex flex-col w-full space-y-3">
+                            <div className="flex flex-col gap-1">
+                                <Label className="text-xs text-muted-foreground">İskonto Oranı (%)</Label>
+                                <Input
+                                    type="number"
+                                    min="0"
+                                    max="100"
+                                    step="1"
+                                    value={discountRate}
+                                    onChange={(e) => setDiscountRate(parseFloat(e.target.value) || 0)}
+                                    className="h-8"
+                                />
+                            </div>
+                            <div className="space-y-1 text-sm pt-2 border-t">
+                                <div className="flex justify-between">
+                                    <span className="text-muted-foreground">Ara Toplam:</span>
+                                    <span>{calculateTotals().subTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {currencyCode}</span>
+                                </div>
+                                <div className="flex justify-between text-red-500">
+                                    <span>İskonto:</span>
+                                    <span>-{calculateTotals().totalDiscount.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {currencyCode}</span>
+                                </div>
+                                <div className="flex justify-between text-blue-600">
+                                    <span>KDV Toplam:</span>
+                                    <span>+{calculateTotals().totalVat.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {currencyCode}</span>
+                                </div>
+                                <div className="flex justify-between font-bold text-lg pt-2 border-t">
+                                    <span>Genel Toplam:</span>
+                                    <span>{calculateTotals().grandTotal.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {currencyCode}</span>
+                                </div>
+                            </div>
+                            <p className="text-xs text-slate-400 text-center pt-2">
+                                * Kur bilgisi işlem anında sabitlenir.
                             </p>
                         </div>
                     </CardContent>
@@ -189,9 +239,10 @@ export default function NewInvoicePage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="w-[40%]">Ürün / Hizmet Adı</TableHead>
-                                <TableHead className="w-[20%]">Miktar</TableHead>
-                                <TableHead className="w-[20%]">Birim Fiyat</TableHead>
+                                <TableHead className="w-[30%]">Ürün / Hizmet Adı</TableHead>
+                                <TableHead className="w-[15%]">Miktar</TableHead>
+                                <TableHead className="w-[15%]">Birim Fiyat</TableHead>
+                                <TableHead className="w-[15%]">KDV (%)</TableHead>
                                 <TableHead className="w-[15%] text-right">Tutar</TableHead>
                                 <TableHead className="w-[5%]"></TableHead>
                             </TableRow>
@@ -223,8 +274,26 @@ export default function NewInvoicePage() {
                                             onChange={(e) => handleItemChange(index, 'unitPrice', parseFloat(e.target.value))}
                                         />
                                     </TableCell>
+                                    <TableCell>
+                                        <select
+                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                            value={item.vatRate}
+                                            onChange={(e) => handleItemChange(index, 'vatRate', parseInt(e.target.value))}
+                                        >
+                                            <option value="0">%0</option>
+                                            <option value="1">%1</option>
+                                            <option value="10">%10</option>
+                                            <option value="20">%20</option>
+                                        </select>
+                                    </TableCell>
                                     <TableCell className="text-right font-medium">
-                                        {(item.quantity * item.unitPrice).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                                        {/* Satır Tutarı: (Miktar * Birim Fiyat - İskonto) + KDV */}
+                                        {(() => {
+                                            const base = item.quantity * item.unitPrice
+                                            const disc = base * (discountRate / 100)
+                                            const vat = (base - disc) * (item.vatRate / 100)
+                                            return (base - disc + vat).toLocaleString('tr-TR', { minimumFractionDigits: 2 })
+                                        })()}
                                     </TableCell>
                                     <TableCell>
                                         <Button

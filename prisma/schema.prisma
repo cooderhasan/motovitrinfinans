@@ -109,6 +109,7 @@ model Invoice {
   currencyId    Int      @map("currency_id")
   exchangeRate  Decimal  @db.Decimal(18, 2) @map("exchange_rate")
   totalAmount   Decimal  @db.Decimal(18, 2) @map("total_amount")
+  discountRate  Decimal  @default(0) @db.Decimal(5, 2) @map("discount_rate") // Yüzde olarak (örn: 10.00)
   createdAt     DateTime @default(now()) @map("created_at")
 
   supplier      Cari     @relation(fields: [supplierId], references: [id])
@@ -124,6 +125,7 @@ model InvoiceItem {
   productName String   @map("product_name")
   quantity    Decimal  @db.Decimal(18, 2)
   unitPrice   Decimal  @db.Decimal(18, 2) @map("unit_price")
+  vatRate     Int      @default(0) @map("vat_rate") // 0, 1, 10, 20
   lineTotal   Decimal  @db.Decimal(18, 2) @map("line_total")
 
   invoice     Invoice  @relation(fields: [invoiceId], references: [id])
