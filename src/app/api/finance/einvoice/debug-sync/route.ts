@@ -1,4 +1,3 @@
-
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
 
@@ -45,17 +44,20 @@ export async function GET(request: Request) {
         const searchParams = new URL(request.url).searchParams
         if (searchParams.get('mode') === 'probe') {
             const candidates = [
-                'einvoice/v1/outgoing/invoices/send',
-                'einvoice/v1/e-fatura/olustur',
-                'v1/fatura/olustur',
-                'fatura/olustur',
-                'invoice/create',
-                'api/fatura/olustur',
-                'einvoice/v1/ubl/send',
+                // Swagger Candidates
+                'einvoice/swagger/v1/swagger.json',
+                'einvoice/v1/swagger.json',
+                'swagger/v1/swagger.json',
 
-                // Root attempts (assuming apiUrl has trailing slash)
-                'send',
-                'create'
+                // Explicit Root Candidates
+                'fatura/olustur',
+                'api/fatura/olustur',
+                'v1/fatura/olustur',
+
+                // Standard NES
+                'einvoice/v1/outgoing/invoices/send',
+                'einvoice/v1/document/create',
+                'einvoice/v1/e-fatura/olustur'
             ]
 
             const results: any = {}
@@ -92,7 +94,7 @@ export async function GET(request: Request) {
             }
 
             return NextResponse.json({
-                message: 'Endpoint Probe Results (Look for 400 or 200, NOT 404/405)',
+                message: 'Endpoint Probe Results (Swagger=200 is Gold, POST=400/200 is Gold)',
                 results
             })
         }
@@ -103,24 +105,20 @@ export async function GET(request: Request) {
 
         // 3. Probe for Lines (UBL/XML)
         let ublData = 'Denenmedi'
-        const ublRes = await fetch(`${apiUrl}einvoice/v1/incoming/invoices/${uuid}/ubl`, {
-            headers: { 'Authorization': `Bearer ${apiKey}` }
-        })
-        if (ublRes.ok) ublData = 'Mevcut (Text Length: ' + (await ublRes.text()).length + ')'
-        else ublData = 'Hata: ' + ublRes.status
+        try {
+            const ublRes = await fetch(`${apiUrl}einvoice/v1/incoming/invoices/${uuid}/ubl`, {
+                headers: { 'Authorization': `Bearer ${apiKey}` }
+            })
+            if (ublRes.ok) ublData = 'Mevcut (Text Length: ' + (await ublRes.text()).length + ')'
+            else ublData = 'Hata: ' + ublRes.status
+        } catch (e: any) { ublData = e.message }
 
-        // 4. Probe for JSON Model?
-        let jsonModelData = 'Denenmedi'
-        /*
-        const modelRes = await fetch(`${apiUrl}einvoice/v1/incoming/invoices/${uuid}/model`, { ... })
-        */
 
         // Return comparison
         return NextResponse.json({
             message: 'DETAYLI KOY ANALIZI',
 
             // DUMP EVERYTHING!
-            // We need to see EXACTLY what fields are in the list object
             FULL_INVOICE_OBJECT: summaryInv,
 
             // 2. Lines might be in UBL
