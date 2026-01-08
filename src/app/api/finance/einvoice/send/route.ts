@@ -91,7 +91,7 @@ export async function POST(request: Request) {
         // 5. Send to NES API
         console.log('Sending Payload:', JSON.stringify(payload, null, 2))
 
-        const response = await fetch(`${apiUrl}einvoice/v1/send`, {
+        const response = await fetch(`${apiUrl}einvoice/v1/outgoing/invoices`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
