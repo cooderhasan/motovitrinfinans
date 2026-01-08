@@ -164,6 +164,10 @@ export default function NewEInvoicePage() {
             alert('Lütfen alıcı ünvan ve adres bilgilerini doldurunuz.')
             return
         }
+        if (!recipient.city || !recipient.district) {
+            alert('Lütfen İl ve İlçe bilgilerini eksiksiz doldurunuz. (E-Fatura/Arşiv için zorunludur)')
+            return
+        }
 
         setSubmitting(true)
         try {
