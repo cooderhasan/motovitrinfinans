@@ -157,6 +157,9 @@ export async function POST(request: Request) {
                     <cbc:Name>Turkiye</cbc:Name>
                 </cac:Country>
             </cac:PostalAddress>
+            <cac:Contact>
+                <cbc:ElectronicMail>${recipient.email}</cbc:ElectronicMail>
+            </cac:Contact>
             ${recipient.vkn.length === 11 ? (() => {
                 const parts = recipient.title.trim().split(' ')
                 const lastName = parts.pop() || ''
@@ -167,9 +170,6 @@ export async function POST(request: Request) {
                 <cbc:FamilyName>${lastName}</cbc:FamilyName>
             </cac:Person>`
             })() : ''}
-             <cac:Contact>
-                <cbc:ElectronicMail>${recipient.email}</cbc:ElectronicMail>
-            </cac:Contact>
         </cac:Party>
     </cac:AccountingCustomerParty>
     <cac:TaxTotal>
