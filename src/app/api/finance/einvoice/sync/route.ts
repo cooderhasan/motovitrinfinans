@@ -98,11 +98,15 @@ export async function POST() {
                 const currency = await db.currency.findFirst({ where: { code: 'TL' } })
                 if (!currency) throw new Error('TL Para birimi bulunamadı')
 
+                // Safely get sender details
+                const senderTitle = inv.sender?.title || inv.sender?.name || 'Bilinmeyen Tedarikçi'
+                const senderTax = inv.sender?.vknTckn || inv.sender?.identifier || '1111111111'
+
                 supplier = await db.cari.create({
                     data: {
                         type: 'SUPPLIER',
-                        title: inv.sender.title || 'Bilinmeyen Tedarikçi',
-                        taxNumber: inv.sender.vknTckn,
+                        title: senderTitle,
+                        taxNumber: senderTax,
                         defaultCurrencyId: currency.id,
                         openingBalanceCurrencyId: currency.id,
                         isActive: true
