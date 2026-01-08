@@ -57,7 +57,11 @@ export async function GET(request: Request) {
                 // Standard NES
                 'einvoice/v1/outgoing/invoices/send',
                 'einvoice/v1/document/create',
-                'einvoice/v1/e-fatura/olustur'
+                'einvoice/v1/e-fatura/olustur',
+
+                // UPLOAD Candidates (New Method)
+                'v1/uploads/document',
+                'einvoice/v1/uploads/document'
             ]
 
             const results: any = {}
