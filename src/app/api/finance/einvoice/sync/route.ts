@@ -128,7 +128,7 @@ export async function POST() {
             // Create Invoice
             await db.invoice.create({
                 data: {
-                    uuid: inv.uuid,
+                    uuid: realUuid,
                     invoiceNumber: inv.invoiceNumber,
                     invoiceDate: new Date(inv.issueDate),
                     supplierId: supplier.id,
