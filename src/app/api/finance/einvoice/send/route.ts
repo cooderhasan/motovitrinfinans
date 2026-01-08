@@ -216,6 +216,11 @@ export async function POST(request: Request) {
             formData.append('IsDirectSend', 'true')
         }
 
+        // SendType is required for E-Archive
+        if (profileId === 'EARSIVFATURA') {
+            formData.append('SendType', 'ELEKTRONIK')
+        }
+
         formData.append('SenderAlias', senderAlias)
         formData.append('ReceiverAlias', receiverAlias)
 
