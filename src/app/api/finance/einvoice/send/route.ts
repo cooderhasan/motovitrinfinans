@@ -114,11 +114,21 @@ export async function POST(request: Request) {
     <cac:AccountingSupplierParty>
         <cac:Party>
             <cac:PartyIdentification>
-                <cbc:ID schemeID="VKN">${myVkn}</cbc:ID>
+                <cbc:ID schemeID="${myVkn.length === 11 ? 'TCKN' : 'VKN'}">${myVkn}</cbc:ID>
             </cac:PartyIdentification>
+            ${myVkn.length === 11 ? (() => {
+                const parts = myTitle.trim().split(' ')
+                const lastName = parts.pop() || ''
+                const firstName = parts.join(' ') || '.'
+                return `
+            <cac:Person>
+                <cbc:FirstName>${firstName}</cbc:FirstName>
+                <cbc:FamilyName>${lastName}</cbc:FamilyName>
+            </cac:Person>`
+            })() : `
             <cac:PartyName>
                 <cbc:Name>${myTitle}</cbc:Name>
-            </cac:PartyName>
+            </cac:PartyName>`}
             <cac:PostalAddress>
                 <cbc:StreetName>${settingsMap['companyAddress'] || '.'}</cbc:StreetName>
                 <cbc:CitySubdivisionName>${settingsMap['companyDistrict'] || 'Merkez'}</cbc:CitySubdivisionName>
