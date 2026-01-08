@@ -79,14 +79,31 @@ export default function NewEInvoicePage() {
 
     const updateItem = (index: number, field: string, value: any) => {
         const newItems = [...items]
-        newItems[index][field] = value
 
-        // Recalc total
+        if (field === 'totalWithVat') {
+            // Reverse Calculation: Price = TotalWithVat / (Qty * (1 + Vat/100))
+            const totalWithVat = parseFloat(value)
+            const qty = parseFloat(newItems[index].quantity) || 1
+            const vatRate = parseFloat(newItems[index].vatRate) || 0
+
+            if (!isNaN(totalWithVat)) {
+                const vatMultiplier = 1 + (vatRate / 100)
+                // Calculate Unit Price
+                const newPrice = totalWithVat / (qty * vatMultiplier)
+                newItems[index].price = newPrice
+                // Also update total for internal consistency if used
+                newItems[index].total = newPrice * qty
+            }
+        } else {
+            newItems[index][field] = value
+        }
+
+        // Recalc total (Standard Forward Calc)
+        // If we just updated price via reverse calc, this is redundant but safe.
+        // If we updated quantity/price/vat manually, we update total.
         if (field === 'quantity' || field === 'price' || field === 'vatRate') {
             const qty = parseFloat(newItems[index].quantity) || 0
             const price = parseFloat(newItems[index].price) || 0
-            // Simplified total (excluding VAT for now in display, usually lineTotal implies with or without depending on design)
-            // Let's say Total = Base
             newItems[index].total = qty * price
         }
         setItems(newItems)
@@ -397,7 +414,7 @@ export default function NewEInvoicePage() {
                                 <TableHead className="w-[15%]">Miktar</TableHead>
                                 <TableHead className="w-[15%]">Birim Fiyat</TableHead>
                                 <TableHead className="w-[15%]">KDV %</TableHead>
-                                <TableHead className="w-[10%] text-right">Toplam</TableHead>
+                                <TableHead className="w-[15%]">Toplam (KDV Dahil)</TableHead>
                                 <TableHead className="w-[5%]"></TableHead>
                             </TableRow>
                         </TableHeader>
@@ -444,8 +461,18 @@ export default function NewEInvoicePage() {
                                             </SelectContent>
                                         </Select>
                                     </TableCell>
-                                    <TableCell className="text-right font-medium">
-                                        {(item.quantity * item.price).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                                    <TableCell>
+                                        <Input
+                                            type="number"
+                                            // Calculate display value: (Qty * Price) * (1 + Vat/100)
+                                            value={
+                                                (item.quantity * item.price * (1 + item.vatRate / 100))
+                                                    .toFixed(2) // Display with 2 decimals
+                                            }
+                                            onChange={(e) => updateItem(index, 'totalWithVat', e.target.value)}
+                                            className="h-8 font-bold text-right"
+                                            onClick={(e) => (e.target as HTMLInputElement).select()} // Select all on click for easy edit
+                                        />
                                     </TableCell>
                                     <TableCell>
                                         <Button
