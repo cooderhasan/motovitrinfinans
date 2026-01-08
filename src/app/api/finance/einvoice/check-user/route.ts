@@ -81,6 +81,20 @@ export async function GET(request: Request) {
             }
         }
 
+        // 3. Check Local DB for detailed info (Address, etc.)
+        const localCari = await db.cari.findFirst({
+            where: { taxNumber: vkn }
+        })
+
+        const localDetails = localCari ? {
+            address: localCari.address,
+            // district: localCari.district, // Not in DB yet
+            city: localCari.city,
+            taxOffice: localCari.taxOffice,
+            email: localCari.email,
+            phone: localCari.phone
+        } : {}
+
         if (isEInvoice && finalData) {
             return NextResponse.json({
                 isEInvoiceUser: true,
@@ -88,7 +102,8 @@ export async function GET(request: Request) {
                 title: finalData.title,
                 aliases: finalData.aliases || [],
                 message: 'E-Fatura mükellefi',
-                debug: debugLog
+                debug: debugLog,
+                ...localDetails // Merge local details
             })
         }
 
@@ -97,7 +112,9 @@ export async function GET(request: Request) {
             isEInvoiceUser: false,
             type: 'E-ARCHIVE',
             message: 'E-Fatura mükellefi değil (veya bulunamadı)',
-            debug: debugLog
+            debug: debugLog,
+            title: localCari?.title || '', // If we have it locally, use it
+            ...localDetails // Merge local details
         })
 
     } catch (error) {

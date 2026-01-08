@@ -58,11 +58,21 @@ export default function NewEInvoicePage() {
             if (data.isEInvoiceUser) {
                 setUserType('E-INVOICE')
                 setInvoiceSettings(prev => ({ ...prev, profile: 'TICARIFATURA' })) // Default to Ticari for B2B
-                if (data.title) setRecipient(prev => ({ ...prev, title: data.title }))
             } else {
                 setUserType('E-ARCHIVE')
                 setInvoiceSettings(prev => ({ ...prev, profile: 'EARSIVFATURA' }))
             }
+
+            // Auto-fill details (for both types)
+            setRecipient(prev => ({
+                ...prev,
+                title: data.title || prev.title,
+                address: data.address || prev.address,
+                city: data.city || prev.city,
+                // district: data.district || prev.district, // Not returned yet
+                taxOffice: data.taxOffice || prev.taxOffice,
+                email: data.email || prev.email,
+            }))
         } catch (error: any) {
             alert(error.message)
             // Fallback manual selection if needed, but keeping it strict for now
