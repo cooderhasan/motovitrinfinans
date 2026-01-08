@@ -4,17 +4,38 @@ import { db } from '@/lib/db'
 import { CurrencyCode, TransactionType } from '@prisma/client'
 
 // GET /api/invoices
-// Tüm faturaları listeler
-export async function GET() {
+// Tüm faturaları filtrelenmiş şekilde listeler
+export async function GET(request: Request) {
     try {
+        const { searchParams } = new URL(request.url)
+        const startDate = searchParams.get('startDate')
+        const endDate = searchParams.get('endDate')
+        const supplierId = searchParams.get('supplierId')
+
+        const where: any = {}
+
+        if (startDate && endDate) {
+            where.invoiceDate = {
+                gte: new Date(startDate),
+                lte: new Date(endDate)
+            }
+        } else if (startDate) {
+            where.invoiceDate = { gte: new Date(startDate) }
+        }
+
+        if (supplierId && supplierId !== 'all') {
+            where.supplierId = parseInt(supplierId)
+        }
+
         const invoices = await db.invoice.findMany({
+            where,
             include: {
                 supplier: true,
                 currency: true,
                 items: true
             },
             orderBy: { invoiceDate: 'desc' },
-            take: 50
+            take: 100
         })
         return NextResponse.json(invoices)
     } catch (error) {

@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Plus, Pencil, CloudDownload } from 'lucide-react'
+import { Plus, Pencil, CloudDownload, Search } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 // import { toast } from 'sonner' // or standard alert for now if toast is not ready
 
@@ -80,6 +80,11 @@ export default function InvoicesIndexPage() {
                     <Link href="/finance/sales/new">
                         <Button className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto">
                             <Plus className="mr-2 h-4 w-4" /> Yeni Satış Fişi
+                        </Button>
+                    </Link>
+                    <Link href="/finance/invoices/all">
+                        <Button variant="secondary" className="w-full sm:w-auto">
+                            <Search className="mr-2 h-4 w-4" /> Detaylı Arama
                         </Button>
                     </Link>
                 </div>
