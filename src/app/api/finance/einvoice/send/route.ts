@@ -51,7 +51,7 @@ export async function POST(request: Request) {
                     postalAddress: {
                         streetName: recipient.address,
                         cityName: recipient.city,
-                        countrySubentity: recipient.district,
+                        citySubdivisionName: recipient.district, // Correct UBL field for İlçe
                         country: { name: recipient.country }
                     },
                     contact: { electronicMail: recipient.email }
