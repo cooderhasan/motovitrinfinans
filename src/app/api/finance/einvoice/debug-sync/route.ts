@@ -73,13 +73,17 @@ export async function GET(request: Request) {
             // 2. CHECK POST Candidates
             for (const path of candidates) {
                 try {
-                    const res = await fetch(`${apiUrl}${path}`, {
-                        method: 'POST',
+                    // Handle absolute vs relative
+                    const url = path.startsWith('http') ? path : `${apiUrl}${path}`
+                    const isSwagger = path.includes('swagger')
+
+                    const res = await fetch(url, {
+                        method: isSwagger ? 'GET' : 'POST',
                         headers: {
                             'Authorization': `Bearer ${apiKey}`,
                             'Content-Type': 'application/json'
                         },
-                        body: JSON.stringify({ note: ["probe"] })
+                        body: isSwagger ? undefined : JSON.stringify({ note: ["probe"] })
                     })
                     results[path] = res.status
                 } catch (e: any) {
