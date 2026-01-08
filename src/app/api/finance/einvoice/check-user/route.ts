@@ -35,15 +35,29 @@ export async function GET(request: Request) {
         // Let's rely on standard NES endpoints structure. 
         // We will try to fetch user info. If 404/empty, they are NOT e-invoice user.
 
-        const response = await fetch(`${apiUrl}einvoice/v1/registeredusers/${vkn}`, {
+        let response = await fetch(`${apiUrl}einvoice/v1/registeredusers/${vkn}`, {
             headers: {
                 'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json'
             }
         })
 
+        // Fallback: Try query param style if path style returns 404 (Endpoint not found?)
         if (response.status === 404) {
-            // Not found = Not E-Invoice user = E-Archive
+            const fallbackResponse = await fetch(`${apiUrl}einvoice/v1/registeredusers?identifier=${vkn}`, {
+                headers: {
+                    'Authorization': `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                }
+            })
+            if (fallbackResponse.ok) {
+                response = fallbackResponse
+            }
+        }
+
+        if (response.status === 404) {
+            // Still 404 -> Truly not found or both endpoints wrong.
+            // But we must assume E-Archive.
             return NextResponse.json({
                 isEInvoiceUser: false,
                 type: 'E-ARCHIVE',
@@ -55,15 +69,21 @@ export async function GET(request: Request) {
             // different type of error
             const errorText = await response.text()
             console.error('NES User Check Error:', errorText, response.status)
-            // Fallback: If API error (except 404), we might defaulting? No, safer to alert user.
-            // But for now let's assume if it fails it's safer to check manually or assume E-Archive with warning.
-            return NextResponse.json({ error: 'Sorgulama başarısız' }, { status: 500 })
+            return NextResponse.json({ error: 'Sorgulama başarısız: ' + response.status }, { status: 500 })
         }
 
-        const data = await response.json()
+        let data = await response.json()
+
+        // Handle list response
+        if (Array.isArray(data)) {
+            data = data[0]
+        } else if (data.data && Array.isArray(data.data)) {
+            // Standard wrapper
+            data = data.data[0]
+        }
 
         // If successful response and data exists
-        if (data && data.identifier) {
+        if (data && (data.identifier || data.vknTckn)) {
             return NextResponse.json({
                 isEInvoiceUser: true,
                 type: 'E-INVOICE',
