@@ -112,6 +112,9 @@ export default function NewEInvoicePage() {
 
     const totals = calculateTotals()
 
+    // Success State
+    const [successUuid, setSuccessUuid] = useState<string | null>(null)
+
     // Submit Logic
     const handleSubmit = async () => {
         if (!isVknVerified) {
@@ -142,13 +145,55 @@ export default function NewEInvoicePage() {
             const data = await res.json()
             if (!res.ok) throw new Error(data.error || 'Gönderim başarısız')
 
-            alert('Fatura başarıyla kuyruğa alındı/gönderildi! UUID: ' + data.uuid)
-            router.push('/finance/invoices')
+            setSuccessUuid(data.uuid)
+            // alert('Fatura başarıyla kuyruğa alındı/gönderildi! UUID: ' + data.uuid)
+            // router.push('/finance/invoices')
         } catch (error: any) {
             alert('Hata: ' + error.message)
         } finally {
             setSubmitting(false)
         }
+    }
+
+    if (successUuid) {
+        return (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6 text-center">
+                <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mb-4">
+                    <Send className="h-10 w-10" />
+                </div>
+                <h2 className="text-3xl font-bold tracking-tight text-emerald-900">Fatura Başarıyla Gönderildi!</h2>
+                <p className="text-slate-600 max-w-md">
+                    Fatura GİB sistemine iletilmek üzere sıraya alındı. Hemen yazdırabilir veya yeni işlem yapabilirsiniz.
+                </p>
+
+                <div className="flex flex-col sm:flex-row gap-4 mt-8">
+                    <Button
+                        size="lg"
+                        variant="outline"
+                        className="min-w-[160px]"
+                        onClick={() => {
+                            window.open(`/api/finance/einvoice/html/${successUuid}?direction=OUTGOING`, '_blank')
+                        }}
+                    >
+                        <FileText className="mr-2 h-5 w-5" />
+                        Yazdır / PDF
+                    </Button>
+
+                    <Button
+                        size="lg"
+                        className="min-w-[160px]"
+                        onClick={() => window.location.reload()}
+                    >
+                        <Plus className="mr-2 h-5 w-5" />
+                        Yeni Fatura
+                    </Button>
+                </div>
+
+                <Button variant="link" onClick={() => router.push('/finance/invoices')} className="mt-4">
+                    Fatura Listesine Dön
+                </Button>
+            </div>
+        )
     }
 
     return (
@@ -196,8 +241,8 @@ export default function NewEInvoicePage() {
 
                         {userType && (
                             <div className={`p-3 rounded-lg text-sm font-medium border ${userType === 'E-INVOICE'
-                                    ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                    : 'bg-orange-50 text-orange-700 border-orange-200'
+                                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                : 'bg-orange-50 text-orange-700 border-orange-200'
                                 }`}>
                                 {userType === 'E-INVOICE'
                                     ? '✅ E-FATURA Mükellefi (Sistemden sistemine gidecek)'

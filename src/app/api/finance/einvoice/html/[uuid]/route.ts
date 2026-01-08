@@ -26,9 +26,13 @@ export async function GET(
             return new NextResponse('API Anahtarı bulunamadı', { status: 400 })
         }
 
+        const { searchParams } = new URL(request.url)
+        const direction = searchParams.get('direction') || 'INCOMING' // INCOMING or OUTGOING
+
         // 2. Fetch HTML from NES
-        // Endpoint: /einvoice/v1/incoming/invoices/{uuid}/html
-        const response = await fetch(`${apiUrl}einvoice/v1/incoming/invoices/${uuid}/html`, {
+        // Endpoint: /einvoice/v1/incoming/invoices/{uuid}/html OR /einvoice/v1/outgoing/...
+        const endpointType = direction === 'OUTGOING' ? 'outgoing' : 'incoming'
+        const response = await fetch(`${apiUrl}einvoice/v1/${endpointType}/invoices/${uuid}/html`, {
             headers: {
                 'Authorization': `Bearer ${apiKey}`
             }
