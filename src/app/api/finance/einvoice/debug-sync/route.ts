@@ -41,6 +41,44 @@ export async function GET(request: Request) {
             return NextResponse.json({ message: 'Hiç fatura bulunamadı.' })
         }
 
+        // PROBE MODE: Test Outbound Endpoints
+        const searchParams = new URL(request.url).searchParams
+        if (searchParams.get('mode') === 'probe') {
+            const candidates = [
+                'einvoice/v1/send',
+                'einvoice/v1/outgoing/invoices',
+                'einvoice/v1/outgoing/invoice',
+                'einvoice/v1/invoices/send',
+                'einvoice/v1/invoice/send',
+                'einvoice/v1/document/send',
+                'einvoice/v1/outgoing/send'
+            ]
+
+            const results: any = {}
+
+            for (const path of candidates) {
+                try {
+                    const res = await fetch(`${apiUrl}${path}`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${apiKey}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ note: ["probe"] }) // Minimal body
+                    })
+                    results[path] = res.status
+                } catch (e: any) {
+                    results[path] = e.message
+                }
+            }
+
+            return NextResponse.json({
+                message: 'Endpoint Probe Results (Look for 400 or 200, NOT 404/405)',
+                results
+            })
+        }
+
+        // ... existing logic for Invoice Detail ...
         const summaryInv = invoices[0]
         const uuid = summaryInv.uuid || summaryInv.id
 
