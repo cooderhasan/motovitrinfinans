@@ -85,9 +85,38 @@ export async function POST() {
                 continue
             }
 
+            // 2b. FETCH DETAILS (Crucial fix: List doesn't have lines or full sender)
+            // We must fetch the individual invoice to get 'lines' and 'accountingSupplierParty'
+            let detailedInv = inv
+            try {
+                const detailRes = await fetch(`${apiUrl}einvoice/v1/incoming/invoices/${realUuid}`, {
+                    headers: { 'Authorization': `Bearer ${apiKey}` }
+                })
+                if (detailRes.ok) {
+                    detailedInv = await detailRes.json()
+                } else {
+                    console.warn(`Could not fetch details for ${realUuid}, using summary.`)
+                }
+            } catch (e) {
+                console.error(`Error fetching detail for ${realUuid}`, e)
+            }
+
+            // From now on, use detailedInv
+            const invToUse = detailedInv
+
             // Safely get sender details
-            const senderTitle = inv.sender?.title || inv.sender?.name || 'Bilinmeyen Tedarikçi'
-            const senderTax = inv.sender?.vknTckn || inv.sender?.identifier || '1111111111'
+            // Try 'sender' first, then 'accountingSupplierParty' (UBL standard)
+            let senderTitle = invToUse.sender?.title || invToUse.sender?.name
+            let senderTax = invToUse.sender?.vknTckn || invToUse.sender?.identifier
+
+            if (!senderTitle && invToUse.accountingSupplierParty) {
+                const party = invToUse.accountingSupplierParty.party
+                senderTitle = party?.partyName?.name || (party?.person ? (party.person.firstName + ' ' + party.person.familyName) : 'Bilinmeyen Tedarikçi')
+                senderTax = party?.partyIdentification?.[0]?.value || '1111111111'
+            }
+
+            if (!senderTitle) senderTitle = 'Bilinmeyen Tedarikçi'
+            if (!senderTax) senderTax = '1111111111'
 
             // Find or Create Supplier (Cari)
             let supplier = await db.cari.findFirst({
@@ -133,18 +162,19 @@ export async function POST() {
             const newInvoice = await db.invoice.create({
                 data: {
                     uuid: realUuid,
-                    invoiceNumber: inv.invoiceNumber,
-                    invoiceDate: new Date(inv.issueDate),
+                    invoiceNumber: invToUse.invoiceNumber,
+                    invoiceDate: new Date(invToUse.issueDate),
                     supplierId: supplier.id,
                     currencyId: currency.id,
                     exchangeRate: 1, // Default for TL, logic needed for others
-                    totalAmount: inv.payableAmount,
+                    totalAmount: invToUse.payableAmount,
                 }
             })
 
             // 4. Process Line Items
+            // 4. Process Line Items
             // NES/UBL usually has 'invoiceLine' array. Some JSON converters might use 'lines'.
-            const lineItems = inv.invoiceLine || inv.lines || []
+            const lineItems = invToUse.invoiceLine || invToUse.lines || []
 
             if (Array.isArray(lineItems)) {
                 for (const item of lineItems) {

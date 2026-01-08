@@ -41,17 +41,36 @@ export async function GET(request: Request) {
             return NextResponse.json({ message: 'Hiç fatura bulunamadı.' })
         }
 
-        const inv = invoices[0]
+        const summaryInv = invoices[0]
+        const uuid = summaryInv.uuid || summaryInv.id
 
-        // Return refined debug info
+        // 3. Fetch Full Details
+        const detailRes = await fetch(`${apiUrl}einvoice/v1/incoming/invoices/${uuid}`, {
+            headers: {
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            }
+        })
+
+        let detailInv = null
+        if (detailRes.ok) {
+            detailInv = await detailRes.json()
+        }
+
+        // Return comparison
         return NextResponse.json({
-            message: 'Fatura Yapısı Analizi',
-            senderKeys: Object.keys(inv.sender || {}),
-            senderRaw: inv.sender,
-            hasLinesArray: !!inv.lines,
-            hasInvoiceLineArray: !!inv.invoiceLine,
-            linesRaw: inv.lines || inv.invoiceLine || 'Yok',
-            fullInvoiceKeys: Object.keys(inv)
+            message: 'Fatura Detay Analizi',
+            summaryKeys: Object.keys(summaryInv),
+            detailKeys: detailInv ? Object.keys(detailInv) : 'Detay Çekilemedi',
+
+            // Check Sender in Detail
+            senderInDetail: detailInv ? (detailInv.sender || detailInv.accountingSupplierParty) : 'Yok',
+
+            // Check Lines in Detail
+            linesInDetail: detailInv ? (detailInv.lines || detailInv.invoiceLine) : 'Yok',
+
+            // Raw Check for nesting
+            rawDetail: detailInv
         })
 
     } catch (error: any) {
