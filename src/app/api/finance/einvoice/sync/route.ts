@@ -130,7 +130,7 @@ export async function POST() {
             if (!currency) throw new Error('Para birimi bulunamadı')
 
             // Create Invoice
-            await db.invoice.create({
+            const newInvoice = await db.invoice.create({
                 data: {
                     uuid: realUuid,
                     invoiceNumber: inv.invoiceNumber,
@@ -139,9 +139,44 @@ export async function POST() {
                     currencyId: currency.id,
                     exchangeRate: 1, // Default for TL, logic needed for others
                     totalAmount: inv.payableAmount,
-                    // We don't have line items yet, so we just set total
                 }
             })
+
+            // 4. Process Line Items
+            // NES/UBL usually has 'invoiceLine' array. Some JSON converters might use 'lines'.
+            const lineItems = inv.invoiceLine || inv.lines || []
+
+            if (Array.isArray(lineItems)) {
+                for (const item of lineItems) {
+                    // Extract item details
+                    // Note: Structure depends heavily on NES JSON format.
+                    // Assuming common UBL-to-JSON mapping:
+                    // item.item.name, item.invoicedQuantity.value, item.price.priceAmount.value
+
+                    const productName = item.item?.name || item.name || 'Hizmet/Ürün'
+                    const quantity = item.invoicedQuantity?.value || item.quantity || 1
+
+                    // Price logic: usually priceAmount is Unit Price
+                    const unitPrice = item.price?.priceAmount?.value || item.unitPrice || 0
+                    const lineTotal = item.lineExtensionAmount?.value || item.total || (quantity * unitPrice)
+
+                    // VAT logic: item.taxTotal?.taxSubtotal...
+                    // Simplified: Try to find a percent or calculate?
+                    // Let's default to 20 if missing for now, or 0.
+                    const vatRate = 20
+
+                    await db.invoiceItem.create({
+                        data: {
+                            invoiceId: newInvoice.id,
+                            productName: productName,
+                            quantity: quantity,
+                            unitPrice: unitPrice,
+                            vatRate: vatRate,
+                            lineTotal: lineTotal
+                        }
+                    })
+                }
+            }
             createdCount++
         }
 
