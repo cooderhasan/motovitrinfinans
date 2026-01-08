@@ -87,7 +87,7 @@ export async function POST(request: Request) {
 
         // 5. Construct UBL XML
         // Note: Assuming 'SATIS' profile. For E-Archive, ProfileID changes to 'EARSIVFATURA'.
-        const profileId = invSettings.profile === 'E-ARCHIVE' ? 'EARSIVFATURA' : 'TICARIFATURA'
+        const profileId = (invSettings.profile === 'E-ARCHIVE' || invSettings.profile === 'EARSIVFATURA') ? 'EARSIVFATURA' : 'TICARIFATURA'
         // Dynamic Prefix Logic: E-Invoice = MFB, E-Archive = MTV
         const invoicePrefix = profileId === 'EARSIVFATURA' ? 'MTV' : 'MFB'
 
