@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { db } from '@/lib/db'
+import { XMLParser } from 'fast-xml-parser'
 
 // NES API Response Interface
 interface NesInvoice {
@@ -85,38 +86,42 @@ export async function POST() {
                 continue
             }
 
-            // 2b. FETCH DETAILS (Crucial fix: List doesn't have lines or full sender)
-            // We must fetch the individual invoice to get 'lines' and 'accountingSupplierParty'
-            let detailedInv = inv
+            // 2b. FETCH DETAILS & UBL
+            // Strategy: 
+            // - Supplier Info: Trust the Summary (inv) first, as Detail often misses it.
+            // - Lines: Trust JSON Detail first, if missing, fetch UBL XML.
+
+            let detailedInv: any = null
+            let ublLines: any[] = []
+
+            // Try fetching JSON Detail
             try {
                 const detailRes = await fetch(`${apiUrl}einvoice/v1/incoming/invoices/${realUuid}`, {
                     headers: { 'Authorization': `Bearer ${apiKey}` }
                 })
-                if (detailRes.ok) {
-                    detailedInv = await detailRes.json()
-                } else {
-                    console.warn(`Could not fetch details for ${realUuid}, using summary.`)
-                }
+                if (detailRes.ok) detailedInv = await detailRes.json()
             } catch (e) {
-                console.error(`Error fetching detail for ${realUuid}`, e)
+                console.error(`JSON Detail fetch failed for ${realUuid}`, e)
             }
 
-            // From now on, use detailedInv
-            const invToUse = detailedInv
+            // Determine Sender Source
+            const sourceForSender = (inv.accountingSupplierParty || inv.sender) ? inv : (detailedInv || inv)
 
-            // Safely get sender details
-            // Try 'sender' first, then 'accountingSupplierParty' (UBL standard)
-            let senderTitle = invToUse.sender?.title || invToUse.sender?.name
-            let senderTax = invToUse.sender?.vknTckn || invToUse.sender?.identifier
+            // Extract Sender
+            let senderTitle = sourceForSender.sender?.title || sourceForSender.sender?.name
+            let senderTax = sourceForSender.sender?.vknTckn || sourceForSender.sender?.identifier
 
-            if (!senderTitle && invToUse.accountingSupplierParty) {
-                const party = invToUse.accountingSupplierParty.party
-                senderTitle = party?.partyName?.name || (party?.person ? (party.person.firstName + ' ' + party.person.familyName) : 'Bilinmeyen Tedarikçi')
-                senderTax = party?.partyIdentification?.[0]?.value || '1111111111'
+            if (!senderTitle && sourceForSender.accountingSupplierParty) {
+                const party = sourceForSender.accountingSupplierParty.party || sourceForSender.accountingSupplierParty
+                senderTitle = party?.partyName?.name || (party?.person ? (party.person.firstName + ' ' + party.person.familyName) : null)
+                senderTax = party?.partyIdentification?.[0]?.value
             }
 
             if (!senderTitle) senderTitle = 'Bilinmeyen Tedarikçi'
             if (!senderTax) senderTax = '1111111111'
+
+            // Use detailed info for invoice main fields if available, else summary
+            const invToUse = detailedInv || inv
 
             // Find or Create Supplier (Cari)
             let supplier = await db.cari.findFirst({
@@ -173,26 +178,67 @@ export async function POST() {
 
             // 4. Process Line Items
             // 4. Process Line Items
-            // NES/UBL usually has 'invoiceLine' array. Some JSON converters might use 'lines'.
-            const lineItems = invToUse.invoiceLine || invToUse.lines || []
+            // Priority: 1. JSON Detail Lines, 2. UBL XML Lines
+            let lineItems = detailedInv?.invoiceLine || detailedInv?.lines || []
+
+            // If JSON lines are missing/empty, try UBL
+            if (!lineItems || lineItems.length === 0) {
+                try {
+                    console.log(`JSON lines missing for ${realUuid}, fetching UBL...`)
+                    const ublRes = await fetch(`${apiUrl}einvoice/v1/incoming/invoices/${realUuid}/ubl`, {
+                        headers: { 'Authorization': `Bearer ${apiKey}` }
+                    })
+
+                    if (ublRes.ok) {
+                        const ublText = await ublRes.text()
+                        const parser = new XMLParser({
+                            ignoreAttributes: false,
+                            removeNSPrefix: true, // fixed casing
+                            attributeNamePrefix: "@_"
+                        })
+                        const ublObj = parser.parse(ublText)
+
+                        // Navigate UBL structure: Invoice -> InvoiceLine (can be array or single object)
+                        const root = ublObj.Invoice || ublObj.DespatchAdvice
+                        if (root && root.InvoiceLine) {
+                            lineItems = Array.isArray(root.InvoiceLine) ? root.InvoiceLine : [root.InvoiceLine]
+                        }
+                    }
+                } catch (e) {
+                    console.error('UBL Fetch/Parse Error:', e)
+                }
+            }
 
             if (Array.isArray(lineItems)) {
                 for (const item of lineItems) {
                     // Extract item details
-                    // Note: Structure depends heavily on NES JSON format.
-                    // Assuming common UBL-to-JSON mapping:
-                    // item.item.name, item.invoicedQuantity.value, item.price.priceAmount.value
+                    // HACK: Map UBL PascalCase fields to our camelCase logic or standard logic
+                    // UBL keys: Item.Name, InvoicedQuantity, Price.PriceAmount
 
-                    const productName = item.item?.name || item.name || 'Hizmet/Ürün'
-                    const quantity = item.invoicedQuantity?.value || item.quantity || 1
+                    const productName = item.item?.name || item.Item?.Name || item.name || 'Hizmet/Ürün'
 
-                    // Price logic: usually priceAmount is Unit Price
-                    const unitPrice = item.price?.priceAmount?.value || item.unitPrice || 0
-                    const lineTotal = item.lineExtensionAmount?.value || item.total || (quantity * unitPrice)
+                    // Quantity
+                    let quantity = 1
+                    if (item.invoicedQuantity?.value) quantity = item.invoicedQuantity.value
+                    else if (item.InvoicedQuantity && typeof item.InvoicedQuantity === 'object') quantity = item.InvoicedQuantity['#text'] || item.InvoicedQuantity
+                    else if (item.InvoicedQuantity) quantity = item.InvoicedQuantity
+                    else if (item.quantity) quantity = item.quantity
 
-                    // VAT logic: item.taxTotal?.taxSubtotal...
-                    // Simplified: Try to find a percent or calculate?
-                    // Let's default to 20 if missing for now, or 0.
+                    // Price
+                    let unitPrice = 0
+                    if (item.price?.priceAmount?.value) unitPrice = item.price.priceAmount.value
+                    else if (item.Price?.PriceAmount && typeof item.Price?.PriceAmount === 'object') unitPrice = item.Price.PriceAmount['#text'] || item.Price.PriceAmount
+                    else if (item.Price?.PriceAmount) unitPrice = item.Price.PriceAmount
+                    else if (item.unitPrice) unitPrice = item.unitPrice
+
+                    // Line Total
+                    let lineTotal = quantity * unitPrice
+                    if (item.lineExtensionAmount?.value) lineTotal = item.lineExtensionAmount.value
+                    else if (item.LineExtensionAmount && typeof item.LineExtensionAmount === 'object') lineTotal = item.LineExtensionAmount['#text'] || item.LineExtensionAmount
+                    else if (item.LineExtensionAmount) lineTotal = item.LineExtensionAmount
+                    else if (item.total) lineTotal = item.total
+
+                    // VAT Check
                     const vatRate = 20
 
                     await db.invoiceItem.create({
