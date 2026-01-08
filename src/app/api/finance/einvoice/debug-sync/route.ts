@@ -46,12 +46,14 @@ export async function GET(request: Request) {
         if (searchParams.get('mode') === 'probe') {
             const candidates = [
                 'einvoice/v1/send',
-                'einvoice/v1/outgoing/invoices',
-                'einvoice/v1/outgoing/invoice',
-                'einvoice/v1/invoices/send',
-                'einvoice/v1/invoice/send',
-                'einvoice/v1/document/send',
-                'einvoice/v1/outgoing/send'
+                'einvoice/v1/outgoing/invoices', // Got 405
+                'einvoice/v1/outgoing/create',
+                'einvoice/v1/invoices/create',
+                'einvoice/v1/invoice/create',
+                'einvoice/v1/fatura/olustur',
+                'einvoice/v1/outgoing',
+                'einvoice/v1/integration/invoices',
+                'einvoice/v1/document/create'
             ]
 
             const results: any = {}

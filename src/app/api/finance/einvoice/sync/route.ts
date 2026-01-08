@@ -77,13 +77,24 @@ export async function POST() {
             }
 
             // Check if exists
-            const existing = await db.invoice.findFirst({
-                where: { uuid: realUuid }
+            const existing: any = await db.invoice.findFirst({
+                where: { uuid: realUuid },
+                include: { supplier: true, items: true }
             })
 
+            // Update logic: If it exists but has no items OR supplier is unknown, we should update it.
+            let shouldUpdate = false
             if (existing) {
-                skippedUuids.push(realUuid)
-                continue
+                const isUnknownSupplier = existing.supplier?.title === 'Bilinmeyen Tedarikçi'
+                const hasNoItems = existing.items.length === 0
+
+                if (isUnknownSupplier || hasNoItems) {
+                    shouldUpdate = true
+                    console.log(`Updating existing invoice ${realUuid} (Unknown: ${isUnknownSupplier}, NoItems: ${hasNoItems})`)
+                } else {
+                    skippedUuids.push(realUuid)
+                    continue
+                }
             }
 
             // 2b. FETCH DETAILS & UBL
@@ -113,7 +124,13 @@ export async function POST() {
 
             if (!senderTitle && sourceForSender.accountingSupplierParty) {
                 const party = sourceForSender.accountingSupplierParty.party || sourceForSender.accountingSupplierParty
-                senderTitle = party?.partyName?.name || (party?.person ? (party.person.firstName + ' ' + party.person.familyName) : null)
+                // Try PartyName -> Name
+                if (party.partyName?.name) senderTitle = party.partyName.name
+                // Try Person -> FirstName + FamilyName
+                else if (party.person) senderTitle = `${party.person.firstName} ${party.person.familyName}`
+                // Try Contact
+                else if (party.contact?.name) senderTitle = party.contact.name
+
                 senderTax = party?.partyIdentification?.[0]?.value
             }
 
@@ -163,18 +180,34 @@ export async function POST() {
 
             if (!currency) throw new Error('Para birimi bulunamadı')
 
-            // Create Invoice
-            const newInvoice = await db.invoice.create({
-                data: {
-                    uuid: realUuid,
-                    invoiceNumber: invToUse.invoiceNumber,
-                    invoiceDate: new Date(invToUse.issueDate),
-                    supplierId: supplier.id,
-                    currencyId: currency.id,
-                    exchangeRate: 1, // Default for TL, logic needed for others
-                    totalAmount: invToUse.payableAmount,
-                }
-            })
+            let newInvoice;
+
+            if (shouldUpdate && existing) {
+                // Update existing
+                newInvoice = await db.invoice.update({
+                    where: { id: existing.id },
+                    data: {
+                        supplierId: supplier.id,
+                        totalAmount: invToUse.payableAmount
+                        // We don't update number/date usually as they are fixed
+                    }
+                })
+                // Clear old items to re-import
+                await db.invoiceItem.deleteMany({ where: { invoiceId: existing.id } })
+            } else {
+                // Create new
+                newInvoice = await db.invoice.create({
+                    data: {
+                        uuid: realUuid,
+                        invoiceNumber: invToUse.invoiceNumber,
+                        invoiceDate: new Date(invToUse.issueDate),
+                        supplierId: supplier.id,
+                        currencyId: currency.id,
+                        exchangeRate: 1,
+                        totalAmount: invToUse.payableAmount,
+                    }
+                })
+            }
 
             // 4. Process Line Items
             // 4. Process Line Items
