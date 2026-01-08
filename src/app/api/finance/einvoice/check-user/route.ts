@@ -35,68 +35,68 @@ export async function GET(request: Request) {
         // Let's rely on standard NES endpoints structure. 
         // We will try to fetch user info. If 404/empty, they are NOT e-invoice user.
 
-        let response = await fetch(`${apiUrl}einvoice/v1/registeredusers/${vkn}`, {
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            }
-        })
+        const debugLog: any[] = []
+        let finalData = null
+        let isEInvoice = false
 
-        // Fallback: Try query param style if path style returns 404 (Endpoint not found?)
-        if (response.status === 404) {
-            const fallbackResponse = await fetch(`${apiUrl}einvoice/v1/registeredusers?identifier=${vkn}`, {
-                headers: {
-                    'Authorization': `Bearer ${apiKey}`,
-                    'Content-Type': 'application/json'
+        // Strategy: Try endpoints in order until one returns 200 and data
+        const endpointsToTry = [
+            `${apiUrl}einvoice/v1/registeredusers/${vkn}`,
+            `${apiUrl}einvoice/v1/registeredusers?identifier=${vkn}`,
+            `${apiUrl}einvoice/v1/registeredusers?vkn=${vkn}`,
+            `${apiUrl}einvoice/v1/users/${vkn}`
+        ]
+
+        for (const url of endpointsToTry) {
+            try {
+                const res = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${apiKey}`, 'Content-Type': 'application/json' }
+                })
+
+                const text = await res.text()
+                let json = null
+                try { json = JSON.parse(text) } catch (e) { }
+
+                debugLog.push({ url, status: res.status, response: json || text })
+
+                if (res.ok && json) {
+                    // Check if json has valid user data
+                    // Access nested data if necessary
+                    let userData = json
+                    if (Array.isArray(userData)) userData = userData[0]
+                    else if (userData.data) {
+                        if (Array.isArray(userData.data)) userData = userData.data[0]
+                        else userData = userData.data
+                    }
+
+                    if (userData && (userData.identifier || userData.vknTckn || userData.title)) {
+                        finalData = userData
+                        isEInvoice = true
+                        break // Found it!
+                    }
                 }
-            })
-            if (fallbackResponse.ok) {
-                response = fallbackResponse
+            } catch (err: any) {
+                debugLog.push({ url, error: err.message })
             }
         }
 
-        if (response.status === 404) {
-            // Still 404 -> Truly not found or both endpoints wrong.
-            // But we must assume E-Archive.
-            return NextResponse.json({
-                isEInvoiceUser: false,
-                type: 'E-ARCHIVE',
-                message: 'E-Fatura mükellefi değil (E-Arşiv kesilmeli)'
-            })
-        }
-
-        if (!response.ok) {
-            // different type of error
-            const errorText = await response.text()
-            console.error('NES User Check Error:', errorText, response.status)
-            return NextResponse.json({ error: 'Sorgulama başarısız: ' + response.status }, { status: 500 })
-        }
-
-        let data = await response.json()
-
-        // Handle list response
-        if (Array.isArray(data)) {
-            data = data[0]
-        } else if (data.data && Array.isArray(data.data)) {
-            // Standard wrapper
-            data = data.data[0]
-        }
-
-        // If successful response and data exists
-        if (data && (data.identifier || data.vknTckn)) {
+        if (isEInvoice && finalData) {
             return NextResponse.json({
                 isEInvoiceUser: true,
                 type: 'E-INVOICE',
-                title: data.title, // Might be in response
-                aliases: data.aliases || [],
-                message: 'E-Fatura mükellefi'
+                title: finalData.title,
+                aliases: finalData.aliases || [],
+                message: 'E-Fatura mükellefi',
+                debug: debugLog
             })
         }
 
-        // Fallback
+        // Default to E-Archive
         return NextResponse.json({
             isEInvoiceUser: false,
-            type: 'E-ARCHIVE'
+            type: 'E-ARCHIVE',
+            message: 'E-Fatura mükellefi değil (veya bulunamadı)',
+            debug: debugLog
         })
 
     } catch (error) {
