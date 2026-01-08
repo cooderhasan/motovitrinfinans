@@ -208,9 +208,13 @@ export async function POST(request: Request) {
         const blob = new Blob([ublXml], { type: 'application/xml' })
         formData.append('File', blob, 'invoice.xml')
 
-        formData.append('IsDirectSend', 'true') // Direct send
         formData.append('PreviewType', 'Html')
         formData.append('SourceApp', 'Antigravity')
+
+        // IsDirectSend is only for E-Invoice, not E-Archive
+        if (profileId === 'TICARIFATURA') {
+            formData.append('IsDirectSend', 'true')
+        }
 
         formData.append('SenderAlias', senderAlias)
         formData.append('ReceiverAlias', receiverAlias)
