@@ -120,6 +120,8 @@ export async function POST(request: Request) {
                 <cbc:Name>${myTitle}</cbc:Name>
             </cac:PartyName>
             <cac:PostalAddress>
+                <cbc:StreetName>${settingsMap['companyAddress'] || '.'}</cbc:StreetName>
+                <cbc:CitySubdivisionName>Merkez</cbc:CitySubdivisionName>
                 <cbc:CityName>${myCity}</cbc:CityName>
                 <cac:Country>
                     <cbc:Name>Turkiye</cbc:Name>
@@ -137,8 +139,8 @@ export async function POST(request: Request) {
             </cac:PartyName>
             <cac:PostalAddress>
                 <cbc:StreetName>${recipient.address}</cbc:StreetName>
-                <cbc:CityName>${recipient.city}</cbc:CityName>
                 <cbc:CitySubdivisionName>${recipient.district}</cbc:CitySubdivisionName>
+                <cbc:CityName>${recipient.city}</cbc:CityName>
                 <cac:Country>
                     <cbc:Name>Turkiye</cbc:Name>
                 </cac:Country>
