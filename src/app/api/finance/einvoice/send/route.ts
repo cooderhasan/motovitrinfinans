@@ -215,28 +215,19 @@ export async function POST(request: Request) {
         formData.append('SenderAlias', senderAlias)
         formData.append('ReceiverAlias', receiverAlias)
 
-        console.log('Sending Multipart to (Primary):', `${apiUrl}einvoice/v1/uploads/document`)
+        // Determine Service Path (E-Invoice vs E-Archive)
+        const servicePath = profileId === 'EARSIVFATURA' ? 'earchive/v1' : 'einvoice/v1'
+        const targetUrl = `${apiUrl}${servicePath}/uploads/document`
 
-        let response = await fetch(`${apiUrl}einvoice/v1/uploads/document`, {
+        console.log('Sending Multipart to:', targetUrl)
+
+        let response = await fetch(targetUrl, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${apiKey}`
             },
             body: formData
         })
-
-        // Retry with fallback path if 404 (maybe apiUrl already includes prefix or is different)
-        if (response.status === 404) {
-            console.log('Primary endpoint 404, retrying fallback:', `${apiUrl}v1/uploads/document`)
-            // Re-create formData because some fetch implementations consume the stream
-            // But since we use Blob, it might be reusable. To be safe, we just retry fetch.
-            // Note: FormData stream might be consumed. Let's assume standard fetch handles re-use or try simple retry.
-            response = await fetch(`${apiUrl}v1/uploads/document`, {
-                method: 'POST',
-                headers: { 'Authorization': `Bearer ${apiKey}` },
-                body: formData
-            })
-        }
 
         if (!response.ok) {
             const text = await response.text()
