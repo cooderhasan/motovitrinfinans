@@ -35,6 +35,7 @@ export async function POST(request: Request) {
         // 3. Generate UUID for the invoice
         const invoiceUuid = uuidv4()
         const issueDate = invSettings.date // YYYY-MM-DD
+        const inviteDateYear = issueDate.split('-')[0]
         const issueTime = new Date().toTimeString().split(' ')[0] // HH:MM:SS
 
         // 4. Calculate Totals
@@ -103,7 +104,7 @@ export async function POST(request: Request) {
     <cbc:UBLVersionID>2.1</cbc:UBLVersionID>
     <cbc:CustomizationID>TR1.2</cbc:CustomizationID>
     <cbc:ProfileID>${profileId}</cbc:ProfileID>
-    <cbc:ID>${invoiceUuid.substring(0, 16).toUpperCase()}</cbc:ID> 
+    <cbc:ID>GIB${inviteDateYear}000000001</cbc:ID> 
     <cbc:CopyIndicator>false</cbc:CopyIndicator>
     <cbc:UUID>${invoiceUuid}</cbc:UUID>
     <cbc:IssueDate>${issueDate}</cbc:IssueDate>
