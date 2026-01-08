@@ -89,7 +89,8 @@ export async function POST(request: Request) {
         }
 
         // 5. Send to NES API
-        // Endpoint: /einvoice/v1/send (Assumption, standard pattern)
+        console.log('Sending Payload:', JSON.stringify(payload, null, 2))
+
         const response = await fetch(`${apiUrl}einvoice/v1/send`, {
             method: 'POST',
             headers: {
@@ -100,9 +101,23 @@ export async function POST(request: Request) {
         })
 
         if (!response.ok) {
-            const errorText = await response.text()
-            console.error('NES Send Error:', errorText)
-            throw new Error(`NES Reddedildi: ${errorText}`)
+            let errorDetail = `Status: ${response.status}`
+            try {
+                const text = await response.text()
+                if (text) {
+                    try {
+                        const json = JSON.parse(text)
+                        errorDetail += ' | ' + (json.message || json.error || json.description || JSON.stringify(json))
+                    } catch {
+                        errorDetail += ' | ' + text.substring(0, 200) // Truncate if too long
+                    }
+                }
+            } catch (e) {
+                errorDetail += ' | (Yanıt okunamadı)'
+            }
+
+            console.error('NES Send Error:', errorDetail)
+            throw new Error(`NES Reddedildi: ${errorDetail}`)
         }
 
         // 6. Save to Database (If successful)
