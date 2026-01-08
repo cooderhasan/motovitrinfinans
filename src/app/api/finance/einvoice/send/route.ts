@@ -91,11 +91,11 @@ export async function POST(request: Request) {
         // Dynamic Prefix Logic: E-Invoice = MFB, E-Archive = MTV
         const invoicePrefix = profileId === 'EARSIVFATURA' ? 'MTV' : 'MFB'
 
-        // Aliases are critical for E-Invoice
-        const senderAlias = 'urn:mail:defaultgb@nes.com.tr' // Default GB
-        const receiverAlias = invSettings.profile === 'E-ARCHIVE'
-            ? 'urn:mail:defaultpk@gib.gov.tr'  // Fallback for E-Archive? Or just empty? Usually empty for E-Archive but NES might want it.
-            : 'urn:mail:defaultpk@nes.com.tr' // Default PK or lookup? ideally lookup.
+        // Aliases are critical for E-Invoice/E-Archive
+        const senderAlias = 'urn:mail:defaultgb@nes.com.tr'
+        const receiverAlias = profileId === 'EARSIVFATURA'
+            ? 'urn:mail:defaultpk@gib.gov.tr'
+            : 'urn:mail:defaultpk@nes.com.tr'
 
         const ublXml = `<?xml version="1.0" encoding="UTF-8"?>
 <Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" 
@@ -212,10 +212,8 @@ export async function POST(request: Request) {
         formData.append('PreviewType', 'Html')
         formData.append('SourceApp', 'Antigravity')
 
-        if (profileId === 'TICARIFATURA') {
-            formData.append('SenderAlias', senderAlias)
-            formData.append('ReceiverAlias', receiverAlias)
-        }
+        formData.append('SenderAlias', senderAlias)
+        formData.append('ReceiverAlias', receiverAlias)
 
         console.log('Sending Multipart to (Primary):', `${apiUrl}einvoice/v1/uploads/document`)
 
