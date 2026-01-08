@@ -44,33 +44,35 @@ export async function GET(request: Request) {
         const summaryInv = invoices[0]
         const uuid = summaryInv.uuid || summaryInv.id
 
-        // 3. Fetch Full Details
-        const detailRes = await fetch(`${apiUrl}einvoice/v1/incoming/invoices/${uuid}`, {
-            headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            }
+        // 3. Probe for Lines (UBL/XML)
+        let ublData = 'Denenmedi'
+        const ublRes = await fetch(`${apiUrl}einvoice/v1/incoming/invoices/${uuid}/ubl`, {
+            headers: { 'Authorization': `Bearer ${apiKey}` }
         })
+        if (ublRes.ok) ublData = 'Mevcut (Text Length: ' + (await ublRes.text()).length + ')'
+        else ublData = 'Hata: ' + ublRes.status
 
-        let detailInv = null
-        if (detailRes.ok) {
-            detailInv = await detailRes.json()
-        }
+        // 4. Probe for JSON Model?
+        let jsonModelData = 'Denenmedi'
+        /*
+        const modelRes = await fetch(`${apiUrl}einvoice/v1/incoming/invoices/${uuid}/model`, { ... })
+        */
 
         // Return comparison
         return NextResponse.json({
-            message: 'Fatura Detay Analizi',
-            summaryKeys: Object.keys(summaryInv),
-            detailKeys: detailInv ? Object.keys(detailInv) : 'Detay Çekilemedi',
+            message: 'Derin Analiz',
 
-            // Check Sender in Detail
-            senderInDetail: detailInv ? (detailInv.sender || detailInv.accountingSupplierParty) : 'Yok',
+            // 1. Sender is definitely in Summary
+            senderInSummary: summaryInv.accountingSupplierParty || 'Yok',
 
-            // Check Lines in Detail
-            linesInDetail: detailInv ? (detailInv.lines || detailInv.invoiceLine) : 'Yok',
+            // 2. Lines might be in UBL
+            ublEndpointStatus: ublData,
 
-            // Raw Check for nesting
-            rawDetail: detailInv
+            // Check if Summary has lines?
+            linesInSummary: summaryInv.lines || summaryInv.invoiceLine || 'Yok',
+
+            // Raw Summary
+            summaryKeys: Object.keys(summaryInv)
         })
 
     } catch (error: any) {
