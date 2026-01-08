@@ -127,14 +127,24 @@ export async function POST() {
             let senderTitle = null
             let senderTax = null
 
-            // 1. Try 'Sender' / 'sender' direct property
-            const directSender = sourceAny.Sender || sourceAny.sender
-            if (directSender) {
-                senderTitle = directSender.title || directSender.name || directSender.Title || directSender.Name
-                senderTax = directSender.vknTckn || directSender.identifier || directSender.VknTckn || directSender.Identifier
+            // 0. PRIORITY: Check DIRECT summary properties (NES Format)
+            // NES returns "partyName": "String", "partyIdentification": "String" directly in summary
+            if (summaryAny.accountingSupplierParty) {
+                const asp = summaryAny.accountingSupplierParty
+                if (typeof asp.partyName === 'string') senderTitle = asp.partyName
+                if (typeof asp.partyIdentification === 'string' || typeof asp.partyIdentification === 'number') senderTax = String(asp.partyIdentification)
             }
 
-            // 2. Try 'AccountingSupplierParty' (UBL Standard)
+            // 1. Try 'Sender' / 'sender' direct property
+            if (!senderTitle) {
+                const directSender = sourceAny.Sender || sourceAny.sender
+                if (directSender) {
+                    senderTitle = directSender.title || directSender.name || directSender.Title || directSender.Name
+                    senderTax = directSender.vknTckn || directSender.identifier || directSender.VknTckn || directSender.Identifier
+                }
+            }
+
+            // 2. Try 'AccountingSupplierParty' (UBL Standard Object Structure)
             if (!senderTitle) {
                 const asp = sourceAny.AccountingSupplierParty || sourceAny.accountingSupplierParty
                 if (asp) {
@@ -143,7 +153,10 @@ export async function POST() {
                     // PartyName
                     const pn = party.PartyName || party.partyName
                     if (pn) {
-                        senderTitle = pn.Name || pn.name
+                        // Handle if Name is object or string
+                        const val = pn.Name || pn.name
+                        if (typeof val === 'string') senderTitle = val
+                        else if (val && val['#text']) senderTitle = val['#text']
                     }
 
                     // PersonName
@@ -163,9 +176,14 @@ export async function POST() {
                     }
 
                     // Tax ID
-                    const pid = party.PartyIdentification || party.partyIdentification
-                    if (Array.isArray(pid) && pid.length > 0) {
-                        senderTax = pid[0].ID?.['#text'] || pid[0].ID || pid[0].Value || pid[0].value
+                    if (!senderTax) {
+                        const pid = party.PartyIdentification || party.partyIdentification
+                        if (Array.isArray(pid) && pid.length > 0) {
+                            senderTax = pid[0].ID?.['#text'] || pid[0].ID || pid[0].Value || pid[0].value
+                        } else if (pid && !Array.isArray(pid)) {
+                            // Sometimes it's a single object
+                            senderTax = pid.ID?.['#text'] || pid.ID || pid.Value || pid.value
+                        }
                     }
                 }
             }
