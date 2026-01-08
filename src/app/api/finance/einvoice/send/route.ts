@@ -188,21 +188,33 @@ export async function POST(request: Request) {
             formData.append('ReceiverAlias', receiverAlias)
         }
 
-        console.log('Sending Multipart to:', `${apiUrl}v1/uploads/document`)
+        console.log('Sending Multipart to (Primary):', `${apiUrl}einvoice/v1/uploads/document`)
 
-        const response = await fetch(`${apiUrl}v1/uploads/document`, {
+        let response = await fetch(`${apiUrl}einvoice/v1/uploads/document`, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${apiKey}`
-                // Content-Type is auto-set by fetch when using FormData
             },
             body: formData
         })
 
+        // Retry with fallback path if 404 (maybe apiUrl already includes prefix or is different)
+        if (response.status === 404) {
+            console.log('Primary endpoint 404, retrying fallback:', `${apiUrl}v1/uploads/document`)
+            // Re-create formData because some fetch implementations consume the stream
+            // But since we use Blob, it might be reusable. To be safe, we just retry fetch.
+            // Note: FormData stream might be consumed. Let's assume standard fetch handles re-use or try simple retry.
+            response = await fetch(`${apiUrl}v1/uploads/document`, {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${apiKey}` },
+                body: formData
+            })
+        }
+
         if (!response.ok) {
             const text = await response.text()
             console.error('NES Upload Error:', text)
-            return NextResponse.json({ error: `Gönderim Hatası: ${text}` }, { status: response.status })
+            return NextResponse.json({ error: `Gönderim Hatası: ${text} (Status: ${response.status})` }, { status: response.status })
         }
 
         // Success
