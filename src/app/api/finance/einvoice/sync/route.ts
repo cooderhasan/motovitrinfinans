@@ -59,16 +59,29 @@ export async function POST() {
         const skippedUuids: string[] = []
 
         // 3. Process Invoices
+        const debugRawInvoice = invoices.length > 0 ? invoices[0] : null
+
         for (const inv of invoices) {
             processedCount++
 
+            // Debug: Fix for potential missing UUID
+            // Some APIs return 'uuid', others 'ETTN', others 'id'
+            const realUuid = inv.uuid || inv.ettn || inv.id || inv.envelopeId
+
+            if (!realUuid) {
+                console.warn('Invoice without UUID found:', inv)
+                // Skip or handle error. If we insert null, we get duplicates.
+                // Let's generate one if missing? No, that breaks sync.
+                continue
+            }
+
             // Check if exists
             const existing = await db.invoice.findFirst({
-                where: { uuid: inv.uuid }
+                where: { uuid: realUuid }
             })
 
             if (existing) {
-                skippedUuids.push(inv.uuid)
+                skippedUuids.push(realUuid)
                 continue
             }
 

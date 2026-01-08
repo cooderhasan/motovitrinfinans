@@ -40,11 +40,12 @@ export async function GET(request: Request) {
         let isEInvoice = false
 
         // Strategy: Try endpoints in order until one returns 200 and data
+        // Docs say: GET /v1/users/{identifier}/{aliasType} (aliasType: All, Pk, Gb)
         const endpointsToTry = [
-            `${apiUrl}einvoice/v1/registeredusers/${vkn}`,
-            `${apiUrl}einvoice/v1/registeredusers?identifier=${vkn}`,
-            `${apiUrl}einvoice/v1/registeredusers?vkn=${vkn}`,
-            `${apiUrl}einvoice/v1/users/${vkn}`
+            `${apiUrl}einvoice/v1/users/${vkn}/All`,
+            `${apiUrl}einvoice/v1/users/${vkn}/Pk`,
+            `${apiUrl}einvoice/v1/registeredusers/${vkn}`, // Legacy try
+            `${apiUrl}einvoice/v1/registeredusers?identifier=${vkn}`
         ]
 
         for (const url of endpointsToTry) {
