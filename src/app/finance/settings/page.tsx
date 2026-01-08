@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
-import { Save, Settings, LogOut, Globe, FileImage } from 'lucide-react'
+import { Save, Settings, LogOut, Globe, FileImage, CloudCog } from 'lucide-react'
 
 // Settings fetch
 async function getSettings() {
@@ -35,7 +35,9 @@ export default function SettingsPage() {
         siteTitle: '',
         siteDescription: '',
         faviconUrl: '',
-        logoUrl: ''
+        logoUrl: '',
+        nesApiKey: '',
+        nesApiUrl: 'https://api.nes.com.tr/'
     })
 
     const { data: settings, isLoading } = useQuery({
@@ -49,7 +51,9 @@ export default function SettingsPage() {
                 siteTitle: settings.siteTitle || '',
                 siteDescription: settings.siteDescription || '',
                 faviconUrl: settings.faviconUrl || '',
-                logoUrl: settings.logoUrl || ''
+                logoUrl: settings.logoUrl || '',
+                nesApiKey: settings.nesApiKey || '',
+                nesApiUrl: settings.nesApiUrl || 'https://api.nes.com.tr/'
             })
         }
     }, [settings])
@@ -166,6 +170,46 @@ export default function SettingsPage() {
                                 />
                             </div>
                         )}
+                    </CardContent>
+                </Card>
+
+                {/* E-Fatura Ayarları */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <CloudCog className="h-5 w-5" />
+                            E-Fatura Entegrasyonu (NES Bilgi)
+                        </CardTitle>
+                        <CardDescription>
+                            Gelen faturaları çekmek için gerekli API bilgileri
+                        </CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="grid gap-2">
+                            <Label htmlFor="nesApiUrl">API Base URL</Label>
+                            <Input
+                                id="nesApiUrl"
+                                value={formData.nesApiUrl}
+                                onChange={(e) => setFormData(prev => ({ ...prev, nesApiUrl: e.target.value }))}
+                                placeholder="https://api.nes.com.tr/"
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                Canlı ortam: https://api.nes.com.tr/ - Test ortamı: https://apitest.nes.com.tr/
+                            </p>
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="nesApiKey">API Anahtarı (Bearer Token)</Label>
+                            <Input
+                                id="nesApiKey"
+                                type="password"
+                                value={formData.nesApiKey}
+                                onChange={(e) => setFormData(prev => ({ ...prev, nesApiKey: e.target.value }))}
+                                placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+                            />
+                            <p className="text-xs text-muted-foreground">
+                                NES Portal {'>'} Yönetim Paneli {'>'} API Tanımları sayfasından oluşturduğunuz token.
+                            </p>
+                        </div>
                     </CardContent>
                 </Card>
 

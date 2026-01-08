@@ -110,6 +110,8 @@ model Invoice {
   exchangeRate  Decimal  @db.Decimal(18, 2) @map("exchange_rate")
   totalAmount   Decimal  @db.Decimal(18, 2) @map("total_amount")
   discountRate  Decimal  @default(0) @db.Decimal(5, 2) @map("discount_rate") // Yüzde olarak (örn: 10.00)
+  uuid          String?  @unique @map("uuid")
+  invoiceNumber String?  @map("invoice_number")
   createdAt     DateTime @default(now()) @map("created_at")
 
   supplier      Cari     @relation(fields: [supplierId], references: [id])

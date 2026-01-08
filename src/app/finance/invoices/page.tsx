@@ -6,7 +6,9 @@ import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Plus, Pencil } from 'lucide-react'
+import { Plus, Pencil, CloudDownload } from 'lucide-react'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
+// import { toast } from 'sonner' // or standard alert for now if toast is not ready
 
 // Faturaları çekme
 async function getInvoices() {
@@ -33,14 +35,43 @@ export default function InvoicesIndexPage() {
         queryFn: getSales
     })
 
+    const queryClient = useQueryClient()
+
+    const syncMutation = useMutation({
+        mutationFn: async () => {
+            const res = await fetch('/api/finance/einvoice/sync', { method: 'POST' })
+            if (!res.ok) {
+                const error = await res.json()
+                throw new Error(error.details || error.error || 'Senkronizasyon hatası')
+            }
+            return res.json()
+        },
+        onSuccess: (data) => {
+            queryClient.invalidateQueries({ queryKey: ['invoices'] })
+            alert(data.message)
+        },
+        onError: (err) => {
+            alert(err.message)
+        }
+    })
+
     return (
-        <div className="space-y-6">
+        <div className="space-y-6" >
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
                     <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Faturalar & Fişler</h2>
                     <p className="text-muted-foreground text-sm">Alış ve Satış hareketlerinizi yönetin.</p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2">
+                    <Button
+                        variant="outline"
+                        onClick={() => syncMutation.mutate()}
+                        disabled={syncMutation.isPending}
+                        className="w-full sm:w-auto border-orange-200 text-orange-700 hover:bg-orange-50 hover:text-orange-900"
+                    >
+                        <CloudDownload className={`mr-2 h-4 w-4 ${syncMutation.isPending ? 'animate-bounce' : ''}`} />
+                        {syncMutation.isPending ? 'Çekiliyor...' : 'NES E-Faturaları Çek'}
+                    </Button>
                     <Link href="/finance/invoices/new">
                         <Button className="bg-orange-600 hover:bg-orange-700 w-full sm:w-auto">
                             <Plus className="mr-2 h-4 w-4" /> Yeni Alış Faturası
@@ -151,6 +182,6 @@ export default function InvoicesIndexPage() {
                     </CardContent>
                 </Card>
             </div>
-        </div>
+        </div >
     )
 }
