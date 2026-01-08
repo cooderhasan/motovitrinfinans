@@ -145,9 +145,10 @@ export async function POST(request: Request) {
             <cac:PartyIdentification>
                 <cbc:ID schemeID="${recipient.vkn.length === 11 ? 'TCKN' : 'VKN'}">${recipient.vkn}</cbc:ID>
             </cac:PartyIdentification>
+            ${recipient.vkn.length === 11 ? '' : `
             <cac:PartyName>
                 <cbc:Name>${recipient.title}</cbc:Name>
-            </cac:PartyName>
+            </cac:PartyName>`}
             <cac:PostalAddress>
                 <cbc:StreetName>${recipient.address}</cbc:StreetName>
                 <cbc:CitySubdivisionName>${recipient.district}</cbc:CitySubdivisionName>
@@ -156,6 +157,16 @@ export async function POST(request: Request) {
                     <cbc:Name>Turkiye</cbc:Name>
                 </cac:Country>
             </cac:PostalAddress>
+            ${recipient.vkn.length === 11 ? (() => {
+                const parts = recipient.title.trim().split(' ')
+                const lastName = parts.pop() || ''
+                const firstName = parts.join(' ') || '.'
+                return `
+            <cac:Person>
+                <cbc:FirstName>${firstName}</cbc:FirstName>
+                <cbc:FamilyName>${lastName}</cbc:FamilyName>
+            </cac:Person>`
+            })() : ''}
              <cac:Contact>
                 <cbc:ElectronicMail>${recipient.email}</cbc:ElectronicMail>
             </cac:Contact>
