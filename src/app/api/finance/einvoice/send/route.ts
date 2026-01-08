@@ -10,12 +10,12 @@ export async function POST(request: Request) {
 
         // 1. Validations
         if (!recipient.vkn || !items.length) {
-            return NextResponse.json({ error: 'Eksik bilgi' }, { status: 400 })
+            return NextResponse.json({ error: 'Eksik bilgi: VKN ve kalemler zorunludur.' }, { status: 400 })
         }
 
         // 2. Get API Credentials
         const settings = await db.settings.findMany({
-            where: { key: { in: ['nesApiKey', 'nesApiUrl'] } }
+            where: { key: { in: ['nesApiKey', 'nesApiUrl', 'companyTitle', 'companyVkn', 'companyAddress', 'companyCity'] } } // Added company details for UBL
         })
         const settingsMap = settings.reduce((acc, curr) => {
             acc[curr.key] = curr.value || ''
@@ -24,163 +24,194 @@ export async function POST(request: Request) {
 
         const apiKey = settingsMap['nesApiKey']
         const apiUrl = settingsMap['nesApiUrl'] || 'https://api.nes.com.tr/'
+        const myTitle = settingsMap['companyTitle'] || 'MOTOVITRIN A.S'
+        const myVkn = settingsMap['companyVkn'] || '1111111111'
+        const myCity = settingsMap['companyCity'] || 'ISTANBUL'
 
         if (!apiKey) {
-            return NextResponse.json({ error: 'API Anahtarı bulunamadı. Ayarlardan giriniz.' }, { status: 400 })
+            return NextResponse.json({ error: 'API Anahtarı bulunamadı.' }, { status: 400 })
         }
 
         // 3. Generate UUID for the invoice
         const invoiceUuid = uuidv4()
+        const issueDate = invSettings.date // YYYY-MM-DD
+        const issueTime = new Date().toTimeString().split(' ')[0] // HH:MM:SS
 
-        // 4. Construct NES Payload (Simplified mapping based on standards)
-        const payload = {
-            uuid: invoiceUuid,
-            profileId: invSettings.profile, // TICARIFATURA / EARSIFATURA
-            invoiceTypeCode: invSettings.type, // SATIS
-            issueDate: invSettings.date,
-            issueTime: new Date().toTimeString().split(' ')[0], // 14:30:00
-            documentCurrencyCode: invSettings.currencyCode,
-            lineCountNumeric: items.length,
-            note: ["Sistem tarafından oluşturuldu"],
+        // 4. Calculate Totals
+        let lineExtensionAmount = 0
+        let taxExclusiveAmount = 0
+        let taxInclusiveAmount = 0
+        let totalTaxAmount = 0
 
-            // Buyer / Receiver
-            accountingCustomerParty: {
-                party: {
-                    partyIdentification: [{ schemeID: recipient.vkn.length === 11 ? 'TCKN' : 'VKN', value: recipient.vkn }],
-                    partyName: { name: recipient.title },
-                    postalAddress: {
-                        streetName: recipient.address,
-                        cityName: recipient.city,
-                        citySubdivisionName: recipient.district, // Correct UBL field for İlçe
-                        country: { name: recipient.country }
-                    },
-                    contact: { electronicMail: recipient.email }
-                }
-            },
+        const linesXml = items.map((item: any, index: number) => {
+            const qty = parseFloat(item.quantity)
+            const price = parseFloat(item.price)
+            const vatRate = parseInt(item.vatRate)
+            const lineTotal = qty * price
+            const vatAmount = lineTotal * (vatRate / 100)
 
-            // Lines
-            invoiceLine: items.map((item: any, index: number) => {
-                const qty = parseFloat(item.quantity)
-                const price = parseFloat(item.price)
-                const vatRate = parseInt(item.vatRate)
-                const amount = qty * price // basic line extension amount
+            lineExtensionAmount += lineTotal
+            taxExclusiveAmount += lineTotal
+            totalTaxAmount += vatAmount
+            taxInclusiveAmount += (lineTotal + vatAmount)
 
-                return {
-                    id: (index + 1).toString(),
-                    invoicedQuantity: { value: qty, unitCode: "C62" }, // C62 = Adet default
-                    lineExtensionAmount: { value: amount, currencyID: "TRY" },
-                    item: {
-                        name: item.name
-                    },
-                    price: {
-                        priceAmount: { value: price, currencyID: "TRY" }
-                    },
-                    taxTotal: {
-                        taxAmount: { value: amount * (vatRate / 100), currencyID: "TRY" },
-                        taxSubtotal: [{
-                            taxCategory: {
-                                percent: vatRate,
-                                taxScheme: { name: "KDV", taxTypeCode: "0015" }
-                            }
-                        }]
-                    }
-                }
-            })
+            return `
+        <cac:InvoiceLine>
+            <cbc:ID>${index + 1}</cbc:ID>
+            <cbc:InvoicedQuantity unitCode="C62">${qty}</cbc:InvoicedQuantity>
+            <cbc:LineExtensionAmount currencyID="TRY">${lineTotal.toFixed(2)}</cbc:LineExtensionAmount>
+            <cac:TaxTotal>
+                <cbc:TaxAmount currencyID="TRY">${vatAmount.toFixed(2)}</cbc:TaxAmount>
+                <cac:TaxSubtotal>
+                    <cbc:TaxableAmount currencyID="TRY">${lineTotal.toFixed(2)}</cbc:TaxableAmount>
+                    <cbc:TaxAmount currencyID="TRY">${vatAmount.toFixed(2)}</cbc:TaxAmount>
+                    <cbc:Percent>${vatRate}</cbc:Percent>
+                    <cac:TaxCategory>
+                        <cac:TaxScheme>
+                            <cbc:Name>KDV</cbc:Name>
+                            <cbc:TaxTypeCode>0015</cbc:TaxTypeCode>
+                        </cac:TaxScheme>
+                    </cac:TaxCategory>
+                </cac:TaxSubtotal>
+            </cac:TaxTotal>
+            <cac:Item>
+                <cbc:Name>${item.name}</cbc:Name>
+            </cac:Item>
+            <cac:Price>
+                <cbc:PriceAmount currencyID="TRY">${price.toFixed(2)}</cbc:PriceAmount>
+            </cac:Price>
+        </cac:InvoiceLine>`
+        }).join('\n')
+
+        // 5. Construct UBL XML
+        // Note: Assuming 'SATIS' profile. For E-Archive, ProfileID changes to 'EARSIVFATURA'.
+        const profileId = invSettings.profile === 'E-ARCHIVE' ? 'EARSIVFATURA' : 'TICARIFATURA'
+        // Aliases are critical for E-Invoice
+        const senderAlias = 'urn:mail:defaultgb@nes.com.tr' // Default GB
+        const receiverAlias = invSettings.profile === 'E-ARCHIVE'
+            ? 'urn:mail:defaultpk@gib.gov.tr'  // Fallback for E-Archive? Or just empty? Usually empty for E-Archive but NES might want it.
+            : 'urn:mail:defaultpk@nes.com.tr' // Default PK or lookup? ideally lookup.
+
+        const ublXml = `<?xml version="1.0" encoding="UTF-8"?>
+<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" 
+ xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" 
+ xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2" 
+ xmlns:ds="http://www.w3.org/2000/09/xmldsig#" 
+ xmlns:ext="urn:oasis:names:specification:ubl:schema:xsd:CommonExtensionComponents-2" 
+ xmlns:xades="http://uri.etsi.org/01903/v1.3.2#" 
+ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+    <cbc:UBLVersionID>2.1</cbc:UBLVersionID>
+    <cbc:CustomizationID>TR1.2</cbc:CustomizationID>
+    <cbc:ProfileID>${profileId}</cbc:ProfileID>
+    <cbc:ID>${invoiceUuid.substring(0, 16).toUpperCase()}</cbc:ID> 
+    <cbc:CopyIndicator>false</cbc:CopyIndicator>
+    <cbc:UUID>${invoiceUuid}</cbc:UUID>
+    <cbc:IssueDate>${issueDate}</cbc:IssueDate>
+    <cbc:IssueTime>${issueTime}</cbc:IssueTime>
+    <cbc:InvoiceTypeCode>SATIS</cbc:InvoiceTypeCode>
+    <cbc:DocumentCurrencyCode>TRY</cbc:DocumentCurrencyCode>
+    <cbc:LineCountNumeric>${items.length}</cbc:LineCountNumeric>
+    <cac:AccountingSupplierParty>
+        <cac:Party>
+            <cac:PartyIdentification>
+                <cbc:ID schemeID="VKN">${myVkn}</cbc:ID>
+            </cac:PartyIdentification>
+            <cac:PartyName>
+                <cbc:Name>${myTitle}</cbc:Name>
+            </cac:PartyName>
+            <cac:PostalAddress>
+                <cbc:CityName>${myCity}</cbc:CityName>
+                <cac:Country>
+                    <cbc:Name>Turkiye</cbc:Name>
+                </cac:Country>
+            </cac:PostalAddress>
+        </cac:Party>
+    </cac:AccountingSupplierParty>
+    <cac:AccountingCustomerParty>
+        <cac:Party>
+            <cac:PartyIdentification>
+                <cbc:ID schemeID="${recipient.vkn.length === 11 ? 'TCKN' : 'VKN'}">${recipient.vkn}</cbc:ID>
+            </cac:PartyIdentification>
+            <cac:PartyName>
+                <cbc:Name>${recipient.title}</cbc:Name>
+            </cac:PartyName>
+            <cac:PostalAddress>
+                <cbc:StreetName>${recipient.address}</cbc:StreetName>
+                <cbc:CityName>${recipient.city}</cbc:CityName>
+                <cbc:CitySubdivisionName>${recipient.district}</cbc:CitySubdivisionName>
+                <cac:Country>
+                    <cbc:Name>Turkiye</cbc:Name>
+                </cac:Country>
+            </cac:PostalAddress>
+             <cac:Contact>
+                <cbc:ElectronicMail>${recipient.email}</cbc:ElectronicMail>
+            </cac:Contact>
+        </cac:Party>
+    </cac:AccountingCustomerParty>
+    <cac:TaxTotal>
+        <cbc:TaxAmount currencyID="TRY">${totalTaxAmount.toFixed(2)}</cbc:TaxAmount>
+        <cac:TaxSubtotal>
+            <cbc:TaxableAmount currencyID="TRY">${taxExclusiveAmount.toFixed(2)}</cbc:TaxableAmount>
+            <cbc:TaxAmount currencyID="TRY">${totalTaxAmount.toFixed(2)}</cbc:TaxAmount>
+            <cac:TaxCategory>
+                 <cac:TaxScheme>
+                    <cbc:Name>KDV</cbc:Name>
+                    <cbc:TaxTypeCode>0015</cbc:TaxTypeCode>
+                </cac:TaxScheme>
+            </cac:TaxCategory>
+        </cac:TaxSubtotal>
+    </cac:TaxTotal>
+    <cac:LegalMonetaryTotal>
+        <cbc:LineExtensionAmount currencyID="TRY">${lineExtensionAmount.toFixed(2)}</cbc:LineExtensionAmount>
+        <cbc:TaxExclusiveAmount currencyID="TRY">${taxExclusiveAmount.toFixed(2)}</cbc:TaxExclusiveAmount>
+        <cbc:TaxInclusiveAmount currencyID="TRY">${taxInclusiveAmount.toFixed(2)}</cbc:TaxInclusiveAmount>
+        <cbc:PayableAmount currencyID="TRY">${taxInclusiveAmount.toFixed(2)}</cbc:PayableAmount>
+    </cac:LegalMonetaryTotal>
+    ${linesXml}
+</Invoice>`
+
+        // 6. Send as Multipart Form Data to /v1/uploads/document
+        const formData = new FormData()
+
+        // Convert string to Blob/File for FormData
+        // Node.js native fetch (Next 13+) supports FormData with Blobs usually, 
+        // but 'file' parameter logic might be ticklish in some environments.
+        const blob = new Blob([ublXml], { type: 'application/xml' })
+        formData.append('File', blob, 'invoice.xml')
+
+        formData.append('IsDirectSend', 'true') // Direct send
+        formData.append('PreviewType', 'Html')
+        formData.append('SourceApp', 'Antigravity')
+
+        if (profileId === 'TICARIFATURA') {
+            formData.append('SenderAlias', senderAlias)
+            formData.append('ReceiverAlias', receiverAlias)
         }
 
-        // 5. Send to NES API
-        console.log('Sending Payload:', JSON.stringify(payload, null, 2))
+        console.log('Sending Multipart to:', `${apiUrl}v1/uploads/document`)
 
-        const response = await fetch(`${apiUrl}einvoice/v1/outgoing/invoices`, {
+        const response = await fetch(`${apiUrl}v1/uploads/document`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
+                'Authorization': `Bearer ${apiKey}`
+                // Content-Type is auto-set by fetch when using FormData
             },
-            body: JSON.stringify(payload)
+            body: formData
         })
 
         if (!response.ok) {
-            let errorDetail = `Status: ${response.status}`
-            try {
-                const text = await response.text()
-                if (text) {
-                    try {
-                        const json = JSON.parse(text)
-                        errorDetail += ' | ' + (json.message || json.error || json.description || JSON.stringify(json))
-                    } catch {
-                        errorDetail += ' | ' + text.substring(0, 200) // Truncate if too long
-                    }
-                }
-            } catch (e) {
-                errorDetail += ' | (Yanıt okunamadı)'
-            }
-
-            console.error('NES Send Error:', errorDetail)
-            throw new Error(`NES Reddedildi: ${errorDetail}`)
+            const text = await response.text()
+            console.error('NES Upload Error:', text)
+            return NextResponse.json({ error: `Gönderim Hatası: ${text}` }, { status: response.status })
         }
 
-        // 6. Save to Database (If successful)
-        // Find existing customer or create temp?
-        // For now, let's create a transaction record to lock it in.
-
-        // TODO: Save to 'Invoice' table as Outgoing... 
-        // Currently our 'Invoice' model is mostly Incoming focused (Buying). 
-        // We might need an 'OutgoingInvoice' (SalesInvoice) model or use 'Invoice' with type='SALES'.
-        // For MVP, since Schema change is risky mid-flight without user approval, 
-        // we will create a "Sales Receipt" (Fiş) in our system to track the money.
-        // Or create an 'Invoice' but mark supplier as 'Our Customer'.
-
-        // Let's create a 'Sales' record (Satış Fişi tablosu var mıydı? Evet /api/sales var)
-        const transactionResult = await db.$transaction(async (tx) => {
-            // Find or Create 'Customer' (Cari)
-            let customer = await tx.cari.findFirst({ where: { taxNumber: recipient.vkn } })
-            if (!customer) {
-                // Auto create customer
-                const currency = await tx.currency.findFirst({ where: { code: 'TL' } })
-                customer = await tx.cari.create({
-                    data: {
-                        type: 'CUSTOMER',
-                        title: recipient.title,
-                        taxNumber: recipient.vkn,
-                        defaultCurrencyId: currency?.id || 1,
-                        openingBalanceCurrencyId: currency?.id || 1,
-                        address: recipient.address,
-                        city: recipient.city,
-                        isActive: true
-                    }
-                })
-            }
-
-            // Calculate Totals again for DB
-            let totalAmount = 0
-            items.forEach((i: any) => {
-                const lineTotal = i.quantity * i.price
-                const tax = lineTotal * (i.vatRate / 100)
-                totalAmount += (lineTotal + tax)
-            })
-
-            // Create Sales Record (Using Sales table if exists, otherwise assume Invoice with type?)
-            // Looking at previous file views, there is GET /api/sales, implies 'Sales' or 'Slip' model.
-            // Let's assume standard 'Invoice' model with a flag if possible, but earlier readout showed 'supplierId' relation...
-            // Actually 'sales' endpoint usually maps to 'Slip' or similar. 
-            // Let's check `schema.prisma` mentally... ah I don't see it in open files.
-            // Safer play: Just return success for now and tell user "System Sent It", 
-            // but for data integrity we should save it.
-            // I'll create a local Invoice record but swap Supplier -> Customer logic if model supports it?
-            // Wait, standard 'Invoice' model has 'supplierId'. 
-            // If I put Customer ID in SupplierId it might break logic (Payable vs Receivable).
-
-            // Plan B: Just returning success UUID. The user can create the "Satış Fişi" manually or I can add a basic "Sales" record if I knew the schema better.
-            // Let's assume there is a 'Sales' or similar. I'll stick to just API success for this "Integration" proof of concept.
-
-            return { uuid: invoiceUuid, customerId: customer.id, total: totalAmount }
-        })
-
+        // Success
+        const successData = await response.json() // assuming JSON response
         return NextResponse.json({
             success: true,
             uuid: invoiceUuid,
-            message: 'Fatura başarıyla gönderildi ve GİB kuyruğuna alındı.'
+            nesResponse: successData,
+            message: 'Fatura başarıyla yüklendi ve gönderildi.'
         })
 
     } catch (error: any) {
