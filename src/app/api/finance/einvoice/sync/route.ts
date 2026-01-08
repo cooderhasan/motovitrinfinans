@@ -115,23 +115,59 @@ export async function POST() {
                 console.error(`JSON Detail fetch failed for ${realUuid}`, e)
             }
 
-            // Determine Sender Source
-            const sourceForSender = (inv.accountingSupplierParty || inv.sender) ? inv : (detailedInv || inv)
+            // Determine Sender Source (Robust Case Insensitive Search)
+            const summaryAny = inv as any
+            const detailAny = detailedInv as any
 
-            // Extract Sender
-            let senderTitle = sourceForSender.sender?.title || sourceForSender.sender?.name
-            let senderTax = sourceForSender.sender?.vknTckn || sourceForSender.sender?.identifier
+            // Look for any sign of a sender object in summary or detail
+            const hasSenderSummary = summaryAny.AccountingSupplierParty || summaryAny.accountingSupplierParty || summaryAny.Sender || summaryAny.sender
+            const sourceAny = hasSenderSummary ? summaryAny : (detailAny || summaryAny)
 
-            if (!senderTitle && sourceForSender.accountingSupplierParty) {
-                const party = sourceForSender.accountingSupplierParty.party || sourceForSender.accountingSupplierParty
-                // Try PartyName -> Name
-                if (party.partyName?.name) senderTitle = party.partyName.name
-                // Try Person -> FirstName + FamilyName
-                else if (party.person) senderTitle = `${party.person.firstName} ${party.person.familyName}`
-                // Try Contact
-                else if (party.contact?.name) senderTitle = party.contact.name
+            // Extract Sender Helper
+            let senderTitle = null
+            let senderTax = null
 
-                senderTax = party?.partyIdentification?.[0]?.value
+            // 1. Try 'Sender' / 'sender' direct property
+            const directSender = sourceAny.Sender || sourceAny.sender
+            if (directSender) {
+                senderTitle = directSender.title || directSender.name || directSender.Title || directSender.Name
+                senderTax = directSender.vknTckn || directSender.identifier || directSender.VknTckn || directSender.Identifier
+            }
+
+            // 2. Try 'AccountingSupplierParty' (UBL Standard)
+            if (!senderTitle) {
+                const asp = sourceAny.AccountingSupplierParty || sourceAny.accountingSupplierParty
+                if (asp) {
+                    const party = asp.Party || asp.party || asp // Sometimes it's direct
+
+                    // PartyName
+                    const pn = party.PartyName || party.partyName
+                    if (pn) {
+                        senderTitle = pn.Name || pn.name
+                    }
+
+                    // PersonName
+                    if (!senderTitle) {
+                        const person = party.Person || party.person
+                        if (person) {
+                            const fname = person.FirstName || person.firstName || ''
+                            const lname = person.FamilyName || person.familyName || ''
+                            senderTitle = `${fname} ${lname}`.trim()
+                        }
+                    }
+
+                    // Contact
+                    if (!senderTitle) {
+                        const contact = party.Contact || party.contact
+                        if (contact) senderTitle = contact.Name || contact.name
+                    }
+
+                    // Tax ID
+                    const pid = party.PartyIdentification || party.partyIdentification
+                    if (Array.isArray(pid) && pid.length > 0) {
+                        senderTax = pid[0].ID?.['#text'] || pid[0].ID || pid[0].Value || pid[0].value
+                    }
+                }
             }
 
             if (!senderTitle) senderTitle = 'Bilinmeyen Tedarikçi'
