@@ -15,7 +15,7 @@ export async function POST(request: Request) {
 
         // 2. Get API Credentials
         const settings = await db.settings.findMany({
-            where: { key: { in: ['nesApiKey', 'nesApiUrl', 'companyTitle', 'companyVkn', 'companyAddress', 'companyCity', 'companyDistrict'] } } // Added company details for UBL
+            where: { key: { in: ['nesApiKey', 'nesApiUrl', 'companyTitle', 'companyVkn', 'companyAddress', 'companyCity', 'companyDistrict', 'companyInvoicePrefix'] } } // Added company details for UBL
         })
         const settingsMap = settings.reduce((acc, curr) => {
             acc[curr.key] = curr.value || ''
@@ -27,6 +27,7 @@ export async function POST(request: Request) {
         const myTitle = settingsMap['companyTitle'] || 'MOTOVITRIN A.S'
         const myVkn = settingsMap['companyVkn'] || '1111111111'
         const myCity = settingsMap['companyCity'] || 'ISTANBUL'
+        const myDetailsPrefix = settingsMap['companyInvoicePrefix'] || 'TAS'
 
         if (!apiKey) {
             return NextResponse.json({ error: 'API Anahtarı bulunamadı.' }, { status: 400 })
@@ -87,6 +88,9 @@ export async function POST(request: Request) {
         // 5. Construct UBL XML
         // Note: Assuming 'SATIS' profile. For E-Archive, ProfileID changes to 'EARSIVFATURA'.
         const profileId = invSettings.profile === 'E-ARCHIVE' ? 'EARSIVFATURA' : 'TICARIFATURA'
+        // Dynamic Prefix Logic: E-Invoice = MFB, E-Archive = MTV
+        const invoicePrefix = profileId === 'EARSIVFATURA' ? 'MTV' : 'MFB'
+
         // Aliases are critical for E-Invoice
         const senderAlias = 'urn:mail:defaultgb@nes.com.tr' // Default GB
         const receiverAlias = invSettings.profile === 'E-ARCHIVE'
@@ -104,7 +108,7 @@ export async function POST(request: Request) {
     <cbc:UBLVersionID>2.1</cbc:UBLVersionID>
     <cbc:CustomizationID>TR1.2</cbc:CustomizationID>
     <cbc:ProfileID>${profileId}</cbc:ProfileID>
-    <cbc:ID>GIB${inviteDateYear}000000001</cbc:ID> 
+    <cbc:ID>${invoicePrefix}${inviteDateYear}000000001</cbc:ID> 
     <cbc:CopyIndicator>false</cbc:CopyIndicator>
     <cbc:UUID>${invoiceUuid}</cbc:UUID>
     <cbc:IssueDate>${issueDate}</cbc:IssueDate>

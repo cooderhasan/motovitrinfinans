@@ -42,7 +42,8 @@ export default function SettingsPage() {
         companyVkn: '',
         companyAddress: '',
         companyCity: '',
-        companyDistrict: ''
+        companyDistrict: '',
+        companyInvoicePrefix: 'MVT' // Default suggestion
     })
 
     const { data: settings, isLoading } = useQuery({
@@ -63,7 +64,8 @@ export default function SettingsPage() {
                 companyVkn: settings.companyVkn || '',
                 companyAddress: settings.companyAddress || '',
                 companyCity: settings.companyCity || '',
-                companyDistrict: settings.companyDistrict || ''
+                companyDistrict: settings.companyDistrict || '',
+                companyInvoicePrefix: settings.companyInvoicePrefix || ''
             })
         }
     }, [settings])
@@ -282,6 +284,17 @@ export default function SettingsPage() {
                                 onChange={(e) => setFormData(prev => ({ ...prev, companyAddress: e.target.value }))}
                                 placeholder="Örn: Atatürk Mah. Çiçek Sok. No:5"
                             />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label htmlFor="companyInvoicePrefix">Fatura Serisi / Ön Eki (3 Harf)</Label>
+                            <Input
+                                id="companyInvoicePrefix"
+                                value={formData.companyInvoicePrefix}
+                                onChange={(e) => setFormData(prev => ({ ...prev, companyInvoicePrefix: e.target.value.toUpperCase().slice(0, 3) }))}
+                                placeholder="Örn: MVT"
+                                maxLength={3}
+                            />
+                            <p className="text-xs text-muted-foreground">E-Fatura gönderiminde kullanılacak 3 harfli seri başlığı.</p>
                         </div>
                     </CardContent>
                 </Card>
