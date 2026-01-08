@@ -15,7 +15,7 @@ export async function POST(request: Request) {
 
         // 2. Get API Credentials
         const settings = await db.settings.findMany({
-            where: { key: { in: ['nesApiKey', 'nesApiUrl', 'companyTitle', 'companyVkn', 'companyAddress', 'companyCity'] } } // Added company details for UBL
+            where: { key: { in: ['nesApiKey', 'nesApiUrl', 'companyTitle', 'companyVkn', 'companyAddress', 'companyCity', 'companyDistrict'] } } // Added company details for UBL
         })
         const settingsMap = settings.reduce((acc, curr) => {
             acc[curr.key] = curr.value || ''
@@ -121,7 +121,7 @@ export async function POST(request: Request) {
             </cac:PartyName>
             <cac:PostalAddress>
                 <cbc:StreetName>${settingsMap['companyAddress'] || '.'}</cbc:StreetName>
-                <cbc:CitySubdivisionName>Merkez</cbc:CitySubdivisionName>
+                <cbc:CitySubdivisionName>${settingsMap['companyDistrict'] || 'Merkez'}</cbc:CitySubdivisionName>
                 <cbc:CityName>${myCity}</cbc:CityName>
                 <cac:Country>
                     <cbc:Name>Turkiye</cbc:Name>
