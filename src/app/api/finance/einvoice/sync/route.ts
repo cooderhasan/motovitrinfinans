@@ -56,6 +56,8 @@ export async function POST() {
         let processedCount = 0
         let createdCount = 0
 
+        const skippedUuids: string[] = []
+
         // 3. Process Invoices
         for (const inv of invoices) {
             processedCount++
@@ -65,7 +67,10 @@ export async function POST() {
                 where: { uuid: inv.uuid }
             })
 
-            if (existing) continue
+            if (existing) {
+                skippedUuids.push(inv.uuid)
+                continue
+            }
 
             // Find or Create Supplier (Cari)
             let supplier = await db.cari.findFirst({
@@ -123,11 +128,16 @@ export async function POST() {
             createdCount++
         }
 
+        const totalInDb = await db.invoice.count()
+
         return NextResponse.json({
             success: true,
             message: `${processedCount} fatura incelendi, ${createdCount} yeni fatura eklendi.`,
             processed: processedCount,
-            created: createdCount
+            created: createdCount,
+            skipped: processedCount - createdCount,
+            totalInDb: totalInDb,
+            debugSkipped: skippedUuids
         })
 
     } catch (error) {
