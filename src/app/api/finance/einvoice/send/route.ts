@@ -116,6 +116,12 @@ export async function POST(request: Request) {
     <cbc:InvoiceTypeCode>SATIS</cbc:InvoiceTypeCode>
     <cbc:DocumentCurrencyCode>TRY</cbc:DocumentCurrencyCode>
     <cbc:LineCountNumeric>${items.length}</cbc:LineCountNumeric>
+    ${profileId === 'EARSIVFATURA' ? `
+    <cac:AdditionalDocumentReference>
+        <cbc:ID>ELEKTRONIK</cbc:ID>
+        <cbc:IssueDate>${issueDate}</cbc:IssueDate>
+        <cbc:DocumentTypeCode>SEND_TYPE</cbc:DocumentTypeCode>
+    </cac:AdditionalDocumentReference>` : ''}
     <cac:AccountingSupplierParty>
         <cac:Party>
             <cac:PartyIdentification>
@@ -216,10 +222,7 @@ export async function POST(request: Request) {
             formData.append('IsDirectSend', 'true')
         }
 
-        // SendType is required for E-Archive
-        if (profileId === 'EARSIVFATURA') {
-            formData.append('SendType', 'ELEKTRONIK')
-        }
+        // Note: SendType for E-Archive is now in UBL XML as AdditionalDocumentReference, not FormData
 
         formData.append('SenderAlias', senderAlias)
         formData.append('ReceiverAlias', receiverAlias)
