@@ -113,19 +113,17 @@ export async function GET(request: Request) {
 
         // Return comparison
         return NextResponse.json({
-            message: 'Derin Analiz',
+            message: 'DETAYLI KOY ANALIZI',
 
-            // 1. Sender is definitely in Summary
-            senderInSummary: summaryInv.accountingSupplierParty || 'Yok',
+            // DUMP EVERYTHING!
+            // We need to see EXACTLY what fields are in the list object
+            FULL_INVOICE_OBJECT: summaryInv,
 
             // 2. Lines might be in UBL
             ublEndpointStatus: ublData,
 
             // Check if Summary has lines?
             linesInSummary: summaryInv.lines || summaryInv.invoiceLine || 'Yok',
-
-            // Raw Summary
-            summaryKeys: Object.keys(summaryInv)
         })
 
     } catch (error: any) {
