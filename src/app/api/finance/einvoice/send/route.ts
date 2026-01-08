@@ -116,16 +116,7 @@ export async function POST(request: Request) {
             <cac:PartyIdentification>
                 <cbc:ID schemeID="${myVkn.length === 11 ? 'TCKN' : 'VKN'}">${myVkn}</cbc:ID>
             </cac:PartyIdentification>
-            ${myVkn.length === 11 ? (() => {
-                const parts = myTitle.trim().split(' ')
-                const lastName = parts.pop() || ''
-                const firstName = parts.join(' ') || '.'
-                return `
-            <cac:Person>
-                <cbc:FirstName>${firstName}</cbc:FirstName>
-                <cbc:FamilyName>${lastName}</cbc:FamilyName>
-            </cac:Person>`
-            })() : `
+            ${myVkn.length === 11 ? '' : `
             <cac:PartyName>
                 <cbc:Name>${myTitle}</cbc:Name>
             </cac:PartyName>`}
@@ -137,6 +128,16 @@ export async function POST(request: Request) {
                     <cbc:Name>Turkiye</cbc:Name>
                 </cac:Country>
             </cac:PostalAddress>
+            ${myVkn.length === 11 ? (() => {
+                const parts = myTitle.trim().split(' ')
+                const lastName = parts.pop() || ''
+                const firstName = parts.join(' ') || '.'
+                return `
+            <cac:Person>
+                <cbc:FirstName>${firstName}</cbc:FirstName>
+                <cbc:FamilyName>${lastName}</cbc:FamilyName>
+            </cac:Person>`
+            })() : ''}
         </cac:Party>
     </cac:AccountingSupplierParty>
     <cac:AccountingCustomerParty>
