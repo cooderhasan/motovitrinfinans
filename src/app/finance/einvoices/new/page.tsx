@@ -74,7 +74,7 @@ export default function NewEInvoicePage() {
 
     // Item Management
     const addItem = () => {
-        setItems([...items, { name: '', quantity: 1, price: 0, vatRate: 20, total: 0 }])
+        setItems([...items, { name: '', quantity: 1, price: 0, vatRate: 20, total: 0, totalWithVat: 0 }])
     }
 
     const updateItem = (index: number, field: string, value: any) => {
