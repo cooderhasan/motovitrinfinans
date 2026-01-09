@@ -253,7 +253,10 @@ export async function POST(request: Request) {
         try {
             const customer = await db.cari.findFirst({
                 where: {
-                    vkn: recipient.vkn,
+                    title: {
+                        contains: recipient.title,
+                        mode: 'insensitive'
+                    },
                     type: 'CUSTOMER'
                 },
                 include: { defaultCurrency: true }
@@ -281,7 +284,7 @@ export async function POST(request: Request) {
                     data: {
                         customerId: customer.id,
                         slipDate: new Date(invSettings.date),
-                        currencyId: customer.defaultCurrency.id,
+                        currencyId: customer.defaultCurrencyId,
                         exchangeRate: 1,
                         totalAmount: totalAmount,
                         uuid: invoiceUuid,
