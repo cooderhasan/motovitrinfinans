@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -149,6 +150,17 @@ export default function NewEInvoicePage() {
 
     // Success State
     const [successUuid, setSuccessUuid] = useState<string | null>(null)
+    const [selectedCustomerId, setSelectedCustomerId] = useState<string>('')
+
+    // Fetch customers
+    const { data: customers } = useQuery({
+        queryKey: ['customers'],
+        queryFn: async () => {
+            const res = await fetch('/api/caries?type=CUSTOMER')
+            if (!res.ok) throw new Error('Müşteriler yüklenemedi')
+            return res.json()
+        }
+    })
 
     // Submit Logic
     const handleSubmit = async () => {
@@ -171,10 +183,16 @@ export default function NewEInvoicePage() {
 
         setSubmitting(true)
         try {
-            const res = await fetch('/api/finance/einvoice/send', {
+            // Eğer müşteri seçiliyse, send-with-slip endpoint'ini kullan (UUID kaydeder)
+            const endpoint = selectedCustomerId
+                ? '/api/finance/einvoice/send-with-slip'
+                : '/api/finance/einvoice/send'
+
+            const res = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
+                    customerId: selectedCustomerId || undefined,
                     recipient,
                     settings: invoiceSettings,
                     items
@@ -278,6 +296,27 @@ export default function NewEInvoicePage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
+                        {/* Müşteri Seçimi (Opsiyonel) */}
+                        <div className="space-y-2">
+                            <Label>Müşteri Seç (Opsiyonel - Kayıt için)</Label>
+                            <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Müşteri seçin veya boş bırakın" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="">Müşteri Seçmeyin (Sadece NES'e Gönder)</SelectItem>
+                                    {customers?.map((customer: any) => (
+                                        <SelectItem key={customer.id} value={customer.id.toString()}>
+                                            {customer.title} - {customer.vkn}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                                Müşteri seçerseniz fatura sisteminize de kaydedilir ve daha sonra PDF indirebilirsiniz.
+                            </p>
+                        </div>
+
                         <div className="flex gap-2 items-end">
                             <div className="flex-1 space-y-2">
                                 <Label>VKN / TCKN</Label>
