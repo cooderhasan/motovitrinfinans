@@ -254,17 +254,53 @@ export async function POST(request: Request) {
             // Build search criteria
             const isGenericVkn = recipient.vkn === '11111111111' || recipient.vkn === '1111111111'
 
-            const customer = await db.cari.findFirst({
+            // 1. Find all candidates by title
+            const candidates = await db.cari.findMany({
                 where: {
                     title: {
                         equals: recipient.title,
                         mode: 'insensitive'
                     },
-                    type: 'CUSTOMER',
-                    // Only check VKN if it's not generic
-                    ...(isGenericVkn ? {} : { taxNumber: recipient.vkn })
-                }
+                    type: 'CUSTOMER'
+                },
+                include: { defaultCurrency: true }
             })
+
+            let customer = null
+
+            // 2. Intelligent matching logic
+            if (candidates.length > 0) {
+                // Priority 1: Exact Tax Number match (if not generic)
+                if (!isGenericVkn) {
+                    customer = candidates.find(c => c.taxNumber === recipient.vkn)
+                }
+
+                // Priority 2: Phone Number match (if provided)
+                if (!customer && recipient.phone) {
+                    // Normalize phone numbers (remove non-digits)
+                    const cleanRecPhone = recipient.phone.replace(/\D/g, '')
+
+                    // Only attempt matching if we have enough digits
+                    if (cleanRecPhone.length > 6) {
+                        customer = candidates.find(c => {
+                            if (!c.phone) return false
+                            const cleanDbPhone = c.phone.replace(/\D/g, '')
+                            return cleanDbPhone.includes(cleanRecPhone) || cleanRecPhone.includes(cleanDbPhone)
+                        })
+                    }
+                }
+
+                // Priority 3: If only one candidate exists with this name, assume it's the one
+                if (!customer && candidates.length === 1) {
+                    customer = candidates[0]
+                }
+
+                // Priority 4: Fallback to first candidate (if generic VKN and no other match found)
+                if (!customer && candidates.length > 0) {
+                    console.log(`⚠️ Multiple candidates for '${recipient.title}' but no specific VKN/Phone match. Using first found.`)
+                    customer = candidates[0] // Fallback
+                }
+            }
 
             // If customer not found, create new one
             let finalCustomer = customer
@@ -292,7 +328,8 @@ export async function POST(request: Request) {
                             openingBalance: 0,
                             openingBalanceCurrencyId: defaultCurrency.id,
                             isActive: true
-                        }
+                        },
+                        include: { defaultCurrency: true }
                     })
                     console.log(`✅ New customer created: ${finalCustomer.title}`)
                 }
