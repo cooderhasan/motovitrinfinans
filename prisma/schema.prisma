@@ -144,12 +144,12 @@ model SalesSlip {
   exchangeRate  Decimal  @db.Decimal(18, 2) @map("exchange_rate")
   totalAmount   Decimal  @db.Decimal(18, 2) @map("total_amount")
   
-  // NES E-Arşiv Bilgileri
+  // NES E-Archive Information
   uuid          String?  @unique @map("uuid")
   invoiceNumber String?  @map("invoice_number")
   sentToNes     Boolean  @default(false) @map("sent_to_nes")
   sentAt        DateTime? @map("sent_at")
-  invoiceType   String?  @map("invoice_type") // 'EARSIVFATURA' or 'TICARIFATURA'
+  invoiceType   String?  @map("invoice_type") // EARSIVFATURA or TICARIFATURA
   
   createdAt     DateTime @default(now()) @map("created_at")
 
