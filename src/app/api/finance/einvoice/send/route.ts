@@ -337,23 +337,29 @@ export async function POST(request: Request) {
 
             if (finalCustomer) {
                 // Calculate total amount
+                // Calculate total amount (VAT Inclusive)
                 let totalAmount = 0
                 const salesItemsData = items.map((item: any) => {
                     const qty = parseFloat(item.quantity)
-                    const price = parseFloat(item.price)
-                    const lineTotal = qty * price
-                    totalAmount += lineTotal
+                    const priceExcl = parseFloat(item.price)
+                    const vatRate = parseFloat(item.vatRate) || 0
+
+                    // Calculate inclusive price
+                    const priceIncl = priceExcl * (1 + vatRate / 100)
+                    const lineTotalIncl = qty * priceIncl
+
+                    totalAmount += lineTotalIncl
 
                     return {
                         productName: item.name,
                         quantity: qty,
-                        unitPrice: price,
-                        lineTotal: lineTotal
+                        unitPrice: priceIncl, // Store inclusive price so slip shows correct total
+                        lineTotal: lineTotalIncl
                     }
                 })
 
                 // Create sales slip with UUID
-                await db.salesSlip.create({
+                const salesSlip = await db.salesSlip.create({
                     data: {
                         customerId: finalCustomer.id,
                         slipDate: new Date(invSettings.date),
@@ -370,13 +376,36 @@ export async function POST(request: Request) {
                         }
                     }
                 })
+
+                // Create CashTransaction for Account Reflection
+                await db.cashTransaction.create({
+                    data: {
+                        cariId: finalCustomer.id,
+                        transactionType: 'DEBIT', // Customer owes us (Borç)
+                        source: 'sales_slip',
+                        sourceId: salesSlip.id,
+                        amount: totalAmount,
+                        currencyId: finalCustomer.defaultCurrencyId,
+                        exchangeRate: 1,
+                        transactionDate: new Date(invSettings.date),
+                        description: `E-Arşiv Fatura #${salesSlip.id} - ${finalCustomer.title}`
+                    }
+                })
                 console.log(`✅ UUID saved for customer: ${finalCustomer.title}`)
             } else {
                 console.log(`ℹ️ Customer not found in DB even after creation attempt. VKN: ${recipient.vkn}, UUID not saved`)
             }
-        } catch (dbError) {
+        } catch (dbError: any) {
             console.error('Database save error (non-critical):', dbError)
-            // Don't fail the request if DB save fails
+            // Don't fail the request if DB save fails, but return the error
+            return NextResponse.json({
+                success: true,
+                uuid: invoiceUuid,
+                nesResponse: successData,
+                message: 'Fatura başarıyla gönderildi FAKAT sisteme kaydedilemedi. Lütfen teknik desteğe bildirin.',
+                warning: 'Veritabanı kayıt hatası',
+                dbError: dbError.message
+            })
         }
 
         return NextResponse.json({

@@ -79,9 +79,12 @@ export async function PUT(
         })
 
         return NextResponse.json(updated)
-    } catch (error) {
+    } catch (error: any) {
         console.error('Cari güncelleme hatası:', error)
-        return NextResponse.json({ error: 'Cari güncellenirken hata oluştu.' }, { status: 500 })
+        return NextResponse.json({
+            error: 'Cari güncellenirken hata oluştu.',
+            details: error.message
+        }, { status: 500 })
     }
 }
 
