@@ -211,11 +211,31 @@ export default function NewEInvoicePage() {
                         variant="outline"
                         className="min-w-[160px]"
                         onClick={() => {
-                            window.open(`/api/finance/einvoice/html/${successUuid}?direction=OUTGOING`, '_blank')
+                            // Determine type based on profile
+                            const type = invoiceSettings.profile === 'EARSIVFATURA' ? 'earchive' : 'einvoice'
+                            const direction = type === 'einvoice' ? 'outgoing' : undefined
+                            const params = new URLSearchParams({ type })
+                            if (direction) params.append('direction', direction)
+
+                            // Open PDF in new tab
+                            window.open(`/api/finance/einvoice/pdf/${successUuid}?${params.toString()}`, '_blank')
                         }}
                     >
                         <FileText className="mr-2 h-5 w-5" />
-                        Yazdır / PDF
+                        PDF İndir
+                    </Button>
+
+                    <Button
+                        size="lg"
+                        variant="outline"
+                        className="min-w-[160px]"
+                        onClick={() => {
+                            const direction = invoiceSettings.profile === 'EARSIVFATURA' ? '' : '?direction=OUTGOING'
+                            window.open(`/api/finance/einvoice/html/${successUuid}${direction}`, '_blank')
+                        }}
+                    >
+                        <FileText className="mr-2 h-5 w-5" />
+                        HTML Önizle
                     </Button>
 
                     <Button
