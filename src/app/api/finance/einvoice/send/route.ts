@@ -251,13 +251,18 @@ export async function POST(request: Request) {
 
         // Try to save UUID to database if customer exists
         try {
+            // Build search criteria
+            const isGenericVkn = recipient.vkn === '11111111111' || recipient.vkn === '1111111111'
+
             const customer = await db.cari.findFirst({
                 where: {
                     title: {
-                        contains: recipient.title,
+                        equals: recipient.title,
                         mode: 'insensitive'
                     },
-                    type: 'CUSTOMER'
+                    type: 'CUSTOMER',
+                    // Only check VKN if it's not generic
+                    ...(isGenericVkn ? {} : { taxNumber: recipient.vkn })
                 },
                 include: { defaultCurrency: true }
             })
