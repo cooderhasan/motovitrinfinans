@@ -23,7 +23,8 @@ export default function NewEInvoicePage() {
         city: '',
         district: '',
         country: 'Türkiye',
-        email: ''
+        email: '',
+        phone: ''
     })
 
     const [invoiceSettings, setInvoiceSettings] = useState({
@@ -73,6 +74,7 @@ export default function NewEInvoicePage() {
                 // district: data.district || prev.district, // Not returned yet
                 taxOffice: data.taxOffice || prev.taxOffice,
                 email: data.email || prev.email,
+                phone: data.phone || prev.phone,
             }))
         } catch (error: any) {
             alert(error.message)
@@ -344,13 +346,22 @@ export default function NewEInvoicePage() {
                             />
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             <div className="space-y-2">
                                 <Label>Vergi Dairesi</Label>
                                 <Input
                                     placeholder="Opsiyonel"
                                     value={recipient.taxOffice}
                                     onChange={(e) => setRecipient({ ...recipient, taxOffice: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Telefon</Label>
+                                <Input
+                                    type="tel"
+                                    placeholder="05xxxxxxxxx"
+                                    value={recipient.phone}
+                                    onChange={(e) => setRecipient({ ...recipient, phone: e.target.value })}
                                 />
                             </div>
                             <div className="space-y-2">
