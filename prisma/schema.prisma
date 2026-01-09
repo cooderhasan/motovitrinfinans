@@ -73,6 +73,7 @@ model Cari {
   email                     String?    @map("email")
   address                   String?    @map("address")
   city                      String?    @map("city")
+  district                  String?    @map("district")
   
   // Tax Info
   taxNumber                 String?    @map("tax_number")
