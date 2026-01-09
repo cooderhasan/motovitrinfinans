@@ -297,26 +297,7 @@ export default function NewEInvoicePage() {
                         </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
-                        {/* Müşteri Seçimi (Opsiyonel) */}
-                        <div className="space-y-2">
-                            <Label>Müşteri Seç (Opsiyonel - Kayıt için)</Label>
-                            <Select value={selectedCustomerId} onValueChange={setSelectedCustomerId}>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Müşteri seçin veya boş bırakın" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="">Müşteri Seçmeyin (Sadece NES'e Gönder)</SelectItem>
-                                    {customers?.map((customer: any) => (
-                                        <SelectItem key={customer.id} value={customer.id.toString()}>
-                                            {customer.title} - {customer.vkn}
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                            <p className="text-xs text-muted-foreground">
-                                Müşteri seçerseniz fatura sisteminize de kaydedilir ve daha sonra PDF indirebilirsiniz.
-                            </p>
-                        </div>
+                        {/* Müşteri seçimi geçici olarak kaldırıldı */}
 
                         <div className="flex gap-2 items-end">
                             <div className="flex-1 space-y-2">
