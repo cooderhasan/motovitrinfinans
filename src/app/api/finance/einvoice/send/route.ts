@@ -108,7 +108,7 @@ export async function POST(request: Request) {
     <cbc:UBLVersionID>2.1</cbc:UBLVersionID>
     <cbc:CustomizationID>TR1.2</cbc:CustomizationID>
     <cbc:ProfileID>${profileId}</cbc:ProfileID>
-    <cbc:ID>${invoicePrefix}${inviteDateYear}${Date.now().toString().slice(-9)}</cbc:ID> 
+    <cbc:ID>${invoicePrefix}${Date.now().toString().slice(-6)}</cbc:ID> 
     <cbc:CopyIndicator>false</cbc:CopyIndicator>
     <cbc:UUID>${invoiceUuid}</cbc:UUID>
     <cbc:IssueDate>${issueDate}</cbc:IssueDate>
