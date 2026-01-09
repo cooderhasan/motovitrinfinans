@@ -152,15 +152,16 @@ export default function NewEInvoicePage() {
     const [successUuid, setSuccessUuid] = useState<string | null>(null)
     const [selectedCustomerId, setSelectedCustomerId] = useState<string>('')
 
-    // Fetch customers
-    const { data: customers } = useQuery({
-        queryKey: ['customers'],
-        queryFn: async () => {
-            const res = await fetch('/api/caries?type=CUSTOMER')
-            if (!res.ok) throw new Error('Müşteriler yüklenemedi')
-            return res.json()
-        }
-    })
+    // Fetch customers - TEMPORARILY DISABLED
+    // const { data: customers } = useQuery({
+    //     queryKey: ['customers'],
+    //     queryFn: async () => {
+    //         const res = await fetch('/api/caries?type=CUSTOMER')
+    //         if (!res.ok) throw new Error('Müşteriler yüklenemedi')
+    //         return res.json()
+    //     }
+    // })
+    const customers = [] // Temporary fix
 
     // Submit Logic
     const handleSubmit = async () => {
