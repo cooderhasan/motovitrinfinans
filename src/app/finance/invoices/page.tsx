@@ -6,7 +6,7 @@ import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
-import { Plus, Pencil, CloudDownload, Search } from 'lucide-react'
+import { Plus, Pencil, CloudDownload, Search, FileText, Send } from 'lucide-react'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 // import { toast } from 'sonner' // or standard alert for now if toast is not ready
 
@@ -59,8 +59,8 @@ export default function InvoicesIndexPage() {
         <div className="space-y-6" >
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
                 <div>
-                    <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Faturalar & Fişler</h2>
-                    <p className="text-muted-foreground text-sm">Alış ve Satış hareketlerinizi yönetin.</p>
+                    <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">Faturalar</h2>
+                    <p className="text-muted-foreground text-sm">Alış ve Satış faturalarınızı yönetin.</p>
                 </div>
                 <div className="flex flex-col sm:flex-row gap-2">
                     <Button
@@ -79,7 +79,7 @@ export default function InvoicesIndexPage() {
                     </Link>
                     <Link href="/finance/sales/new">
                         <Button className="bg-blue-600 hover:bg-blue-700 w-full sm:w-auto">
-                            <Plus className="mr-2 h-4 w-4" /> Yeni Satış Fişi
+                            <Plus className="mr-2 h-4 w-4" /> Yeni Satış Faturası
                         </Button>
                     </Link>
                     <Link href="/finance/invoices/all">
@@ -139,11 +139,11 @@ export default function InvoicesIndexPage() {
                     </CardContent>
                 </Card>
 
-                {/* Son Satış Fişleri */}
+                {/* Son Satış Faturaları */}
                 <Card className="border-l-4 border-l-blue-500">
                     <CardHeader>
-                        <CardTitle className="text-xl font-semibold text-slate-800">Son Satış Fişleri</CardTitle>
-                        <p className="text-sm text-slate-500">Müşteri alacaklanmaları</p>
+                        <CardTitle className="text-xl font-semibold text-slate-800">Son Satış Faturaları</CardTitle>
+                        <p className="text-sm text-slate-500">Müşteri alacakları</p>
                     </CardHeader>
                     <CardContent className="overflow-x-auto">
                         {salesLoading ? (
@@ -169,11 +169,37 @@ export default function InvoicesIndexPage() {
                                                 {Number(sale.totalAmount).toLocaleString('tr-TR', { minimumFractionDigits: 2 })} {sale.currency?.code}
                                             </TableCell>
                                             <TableCell>
-                                                <Link href={`/finance/sales/${sale.id}/edit`}>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                        <Pencil className="h-4 w-4" />
-                                                    </Button>
-                                                </Link>
+                                                <div className="flex gap-1">
+                                                    {sale.uuid ? (
+                                                        <>
+                                                            <Button
+                                                                variant="ghost"
+                                                                size="icon"
+                                                                className="h-8 w-8"
+                                                                onClick={() => {
+                                                                    window.open(`/api/finance/einvoice/pdf/${sale.uuid}?type=earchive`, '_blank')
+                                                                }}
+                                                                title="PDF İndir"
+                                                            >
+                                                                <FileText className="h-4 w-4 text-green-600" />
+                                                            </Button>
+                                                        </>
+                                                    ) : (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="icon"
+                                                            className="h-8 w-8"
+                                                            title="NES'e henüz gönderilmedi"
+                                                        >
+                                                            <Send className="h-4 w-4 text-gray-400" />
+                                                        </Button>
+                                                    )}
+                                                    <Link href={`/finance/sales/${sale.id}/edit`}>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                            <Pencil className="h-4 w-4" />
+                                                        </Button>
+                                                    </Link>
+                                                </div>
                                             </TableCell>
                                         </TableRow>
                                     ))}
