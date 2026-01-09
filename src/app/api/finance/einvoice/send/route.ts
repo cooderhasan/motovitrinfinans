@@ -263,11 +263,42 @@ export async function POST(request: Request) {
                     type: 'CUSTOMER',
                     // Only check VKN if it's not generic
                     ...(isGenericVkn ? {} : { taxNumber: recipient.vkn })
-                },
-                include: { defaultCurrency: true }
+                }
             })
 
-            if (customer) {
+            // If customer not found, create new one
+            let finalCustomer = customer
+            if (!finalCustomer) {
+                console.log(`ℹ️ Customer not found, creating new: ${recipient.title}`)
+
+                // Get default currency (TL)
+                const defaultCurrency = await db.currency.findUnique({
+                    where: { code: 'TL' }
+                })
+
+                if (defaultCurrency) {
+                    finalCustomer = await db.cari.create({
+                        data: {
+                            title: recipient.title,
+                            type: 'CUSTOMER',
+                            phone: recipient.phone || null,
+                            email: recipient.email || null,
+                            address: recipient.address || null,
+                            city: recipient.city || null,
+                            district: recipient.district || null,
+                            taxNumber: recipient.vkn || null,
+                            taxOffice: recipient.taxOffice || null,
+                            defaultCurrencyId: defaultCurrency.id,
+                            openingBalance: 0,
+                            openingBalanceCurrencyId: defaultCurrency.id,
+                            isActive: true
+                        }
+                    })
+                    console.log(`✅ New customer created: ${finalCustomer.title}`)
+                }
+            }
+
+            if (finalCustomer) {
                 // Calculate total amount
                 let totalAmount = 0
                 const salesItemsData = items.map((item: any) => {
@@ -287,9 +318,9 @@ export async function POST(request: Request) {
                 // Create sales slip with UUID
                 await db.salesSlip.create({
                     data: {
-                        customerId: customer.id,
+                        customerId: finalCustomer.id,
                         slipDate: new Date(invSettings.date),
-                        currencyId: customer.defaultCurrencyId,
+                        currencyId: finalCustomer.defaultCurrencyId,
                         exchangeRate: 1,
                         totalAmount: totalAmount,
                         uuid: invoiceUuid,
@@ -302,9 +333,9 @@ export async function POST(request: Request) {
                         }
                     }
                 })
-                console.log(`✅ UUID saved for customer: ${customer.title}`)
+                console.log(`✅ UUID saved for customer: ${finalCustomer.title}`)
             } else {
-                console.log(`ℹ️ Customer not found with VKN: ${recipient.vkn}, UUID not saved`)
+                console.log(`ℹ️ Customer not found in DB even after creation attempt. VKN: ${recipient.vkn}, UUID not saved`)
             }
         } catch (dbError) {
             console.error('Database save error (non-critical):', dbError)
