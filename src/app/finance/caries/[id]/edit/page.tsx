@@ -55,6 +55,7 @@ export default function EditCariPage() {
         email: '',
         address: '',
         city: '',
+        district: '',
         taxNumber: '',
         taxOffice: '',
         notes: '',
@@ -79,6 +80,7 @@ export default function EditCariPage() {
                 email: cari.email || '',
                 address: cari.address || '',
                 city: cari.city || '',
+                district: cari.district || '',
                 taxNumber: cari.taxNumber || '',
                 taxOffice: cari.taxOffice || '',
                 notes: cari.notes || '',
@@ -271,14 +273,25 @@ export default function EditCariPage() {
                                 />
                             </div>
 
-                            <div className="grid gap-2">
-                                <Label htmlFor="city">Şehir</Label>
-                                <Input
-                                    id="city"
-                                    value={formData.city}
-                                    onChange={(e) => handleChange('city', e.target.value)}
-                                    placeholder="İstanbul"
-                                />
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="grid gap-2">
+                                    <Label htmlFor="city">Şehir</Label>
+                                    <Input
+                                        id="city"
+                                        value={formData.city}
+                                        onChange={(e) => handleChange('city', e.target.value)}
+                                        placeholder="İstanbul"
+                                    />
+                                </div>
+                                <div className="grid gap-2">
+                                    <Label htmlFor="district">İlçe</Label>
+                                    <Input
+                                        id="district"
+                                        value={formData.district}
+                                        onChange={(e) => handleChange('district', e.target.value)}
+                                        placeholder="Kadıköy"
+                                    />
+                                </div>
                             </div>
                         </CardContent>
                     </Card>
