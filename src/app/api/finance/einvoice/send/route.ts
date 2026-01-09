@@ -248,6 +248,61 @@ export async function POST(request: Request) {
 
         // Success
         const successData = await response.json() // assuming JSON response
+
+        // Try to save UUID to database if customer exists
+        try {
+            const customer = await db.cari.findFirst({
+                where: {
+                    vkn: recipient.vkn,
+                    type: 'CUSTOMER'
+                },
+                include: { defaultCurrency: true }
+            })
+
+            if (customer) {
+                // Calculate total amount
+                let totalAmount = 0
+                const salesItemsData = items.map((item: any) => {
+                    const qty = parseFloat(item.quantity)
+                    const price = parseFloat(item.price)
+                    const lineTotal = qty * price
+                    totalAmount += lineTotal
+
+                    return {
+                        productName: item.name,
+                        quantity: qty,
+                        unitPrice: price,
+                        lineTotal: lineTotal
+                    }
+                })
+
+                // Create sales slip with UUID
+                await db.salesSlip.create({
+                    data: {
+                        customerId: customer.id,
+                        slipDate: new Date(invSettings.date),
+                        currencyId: customer.defaultCurrency.id,
+                        exchangeRate: 1,
+                        totalAmount: totalAmount,
+                        uuid: invoiceUuid,
+                        invoiceNumber: successData.documentNumber || null,
+                        sentToNes: true,
+                        sentAt: new Date(),
+                        invoiceType: profileId,
+                        items: {
+                            create: salesItemsData
+                        }
+                    }
+                })
+                console.log(`✅ UUID saved for customer: ${customer.title}`)
+            } else {
+                console.log(`ℹ️ Customer not found with VKN: ${recipient.vkn}, UUID not saved`)
+            }
+        } catch (dbError) {
+            console.error('Database save error (non-critical):', dbError)
+            // Don't fail the request if DB save fails
+        }
+
         return NextResponse.json({
             success: true,
             uuid: invoiceUuid,
