@@ -27,12 +27,21 @@ export async function GET(
         }
 
         const { searchParams } = new URL(request.url)
-        const direction = searchParams.get('direction') || 'INCOMING' // INCOMING or OUTGOING
+        const type = searchParams.get('type') || 'einvoice' // 'einvoice' or 'earchive'
+        const direction = searchParams.get('direction') || 'outgoing' // 'incoming' or 'outgoing'
 
         // 2. Fetch HTML from NES
-        // Endpoint: /einvoice/v1/incoming/invoices/{uuid}/html OR /einvoice/v1/outgoing/...
-        const endpointType = direction === 'OUTGOING' ? 'outgoing' : 'incoming'
-        const response = await fetch(`${apiUrl}einvoice/v1/${endpointType}/invoices/${uuid}/html`, {
+        let htmlUrl: string
+
+        if (type === 'earchive') {
+            // E-Arşiv: /earchive/v1/invoices/{uuid}/html
+            htmlUrl = `${apiUrl}earchive/v1/invoices/${uuid}/html`
+        } else {
+            // E-Fatura: /einvoice/v1/incoming|outgoing/invoices/{uuid}/html
+            htmlUrl = `${apiUrl}einvoice/v1/${direction}/invoices/${uuid}/html`
+        }
+
+        const response = await fetch(htmlUrl, {
             headers: {
                 'Authorization': `Bearer ${apiKey}`
             }

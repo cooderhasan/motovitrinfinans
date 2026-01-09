@@ -230,8 +230,12 @@ export default function NewEInvoicePage() {
                         variant="outline"
                         className="min-w-[160px]"
                         onClick={() => {
-                            const direction = invoiceSettings.profile === 'EARSIVFATURA' ? '' : '?direction=OUTGOING'
-                            window.open(`/api/finance/einvoice/html/${successUuid}${direction}`, '_blank')
+                            const type = invoiceSettings.profile === 'EARSIVFATURA' ? 'earchive' : 'einvoice'
+                            const direction = type === 'einvoice' ? 'outgoing' : undefined
+                            const params = new URLSearchParams({ type })
+                            if (direction) params.append('direction', direction)
+
+                            window.open(`/api/finance/einvoice/html/${successUuid}?${params.toString()}`, '_blank')
                         }}
                     >
                         <FileText className="mr-2 h-5 w-5" />
