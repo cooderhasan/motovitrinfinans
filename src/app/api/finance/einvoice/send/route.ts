@@ -217,10 +217,9 @@ export async function POST(request: Request) {
         formData.append('PreviewType', 'Html')
         formData.append('SourceApp', 'Antigravity')
 
-        // IsDirectSend is only for E-Invoice, not E-Archive
-        if (profileId === 'TICARIFATURA') {
-            formData.append('IsDirectSend', 'true')
-        }
+        // IsDirectSend: true = Gönder, false = Taslak olarak kaydet
+        // E-Arşiv için de zorunlu! Yoksa sadece taslak olarak kaydedilir.
+        formData.append('IsDirectSend', 'true')
 
         // Note: SendType for E-Archive is now in UBL XML as AdditionalDocumentReference, not FormData
 
