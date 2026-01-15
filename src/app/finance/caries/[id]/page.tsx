@@ -111,8 +111,8 @@ export default function CariDetailPage({ params }: { params: Promise<{ id: strin
     const currencyCode = cari?.defaultCurrency?.code || 'TL'
 
     const { data: statementData, isLoading: loadingStatement } = useQuery({
-        queryKey: ['statement', id, currencyCode],
-        queryFn: () => getStatement(id, currencyCode),
+        queryKey: ['statement', id, 'ALL'],
+        queryFn: () => getStatement(id, 'ALL'), // Hepsini getir ki kur hatası varsa görelim
         enabled: !!cari
     })
 
@@ -300,10 +300,14 @@ export default function CariDetailPage({ params }: { params: Promise<{ id: strin
                                             <TableCell>{new Date(row.transactionDate).toLocaleDateString('tr-TR')}</TableCell>
                                             <TableCell>{row.description || '-'}</TableCell>
                                             <TableCell className="text-right font-mono text-rose-600">
-                                                {row.debit > 0 ? row.debit.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) : '-'}
+                                                {row.debit > 0 ? (
+                                                    <span>{row.debit.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} <span className="text-xs text-muted-foreground">{row.currency?.code}</span></span>
+                                                ) : '-'}
                                             </TableCell>
                                             <TableCell className="text-right font-mono text-emerald-600">
-                                                {row.credit > 0 ? row.credit.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) : '-'}
+                                                {row.credit > 0 ? (
+                                                    <span>{row.credit.toLocaleString('tr-TR', { minimumFractionDigits: 2 })} <span className="text-xs text-muted-foreground">{row.currency?.code}</span></span>
+                                                ) : '-'}
                                             </TableCell>
                                             <TableCell className="text-right font-mono font-bold">
                                                 {row.balance.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}

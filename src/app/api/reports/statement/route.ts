@@ -7,17 +7,28 @@ import { db } from '@/lib/db'
 export async function POST(request: Request) {
     try {
         const body = await request.json()
-        const { cariId, startDate, endDate, currencyCode } = body
+        const { cariId, currencyCode, startDate, endDate } = body
 
-        if (!cariId || !currencyCode) {
-            return NextResponse.json({ error: 'Cari ve Para Birimi seçimi zorunludur.' }, { status: 400 })
+        console.log('--- STATEMENT REPORT DEBUG ---')
+        console.log('Request:', { cariId, currencyCode, startDate, endDate })
+
+        if (!cariId) {
+            return NextResponse.json({ error: 'Cari seçimi zorunludur.' }, { status: 400 })
         }
+
+        const cari = await db.cari.findUnique({
+            where: { id: parseInt(cariId) }
+        })
+        if (!cari) return NextResponse.json({ error: 'Cari bulunamadı' }, { status: 404 })
 
         // 1. İlgili para birimindeki o carinin tüm hareketlerini çek
         // Tarih filtresi varsa uygula
         const whereClause: any = {
-            cariId: parseInt(cariId),
-            currency: {
+            cariId: parseInt(cariId)
+        }
+
+        if (currencyCode && currencyCode !== 'ALL') {
+            whereClause.currency = {
                 code: currencyCode
             }
         }
@@ -40,18 +51,27 @@ export async function POST(request: Request) {
                 currency: true
             }
         })
+        console.log(`Transactions Found: ${transactions.length}`)
+        console.log('First 3:', transactions.slice(0, 3).map(t => `${t.transactionDate} - ${t.amount} ${t.currency.code}`))
+
 
         // 2. Yürüyen Bakiye (Running Balance) Hesaplama
-        // Bu Cariye göre:
-        // DEBIT (Borç) -> Pozitif (+)
-        // CREDIT (Alacak) -> Negatif (-)
+        let openingBalance = 0
+        let currency = null
 
-        // NOT: Eğer tarih aralığı verildiyse, o tarihten önceki devir bakiyesini de hesaplamak gerekir.
-        // Şimdilik basitleştirilmiş versiyon: Sadece seçilen aralığı gösteriyoruz ama devir bakiyesi olmadığını varsayıyoruz (veya UI'da belirtiyoruz).
-        // Gelişmiş versiyonda: startDate öncesi SUM alınır ve "Devir" satırı eklenir.
+        if (currencyCode && currencyCode !== 'ALL') {
+            currency = await db.currency.findUnique({ where: { code: currencyCode } })
+            if (cari.openingBalanceCurrencyId === currency?.id) {
+                openingBalance = Number(cari.openingBalance)
+            }
+        } else {
+            // ALL modunda açılış bakiyesini göster
+            openingBalance = Number(cari.openingBalance)
+        }
 
-        let runningBalance = 0
         let devirBalance = 0
+        let runningBalance = 0 // Initialize explicitly
+
 
         // Eğer start date varsa, öncesini topla
         if (startDate) {
