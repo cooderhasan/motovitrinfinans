@@ -69,9 +69,11 @@ export async function POST(request: Request) {
             const lineTotal = item.quantity * item.unitPrice
             totalAmount += lineTotal
             return {
+                stockCode: item.stockCode,
                 productName: item.productName,
                 quantity: item.quantity,
                 unitPrice: item.unitPrice,
+                vatRate: item.vatRate || 20, // Default to 20 if missing
                 lineTotal: lineTotal
             }
         })

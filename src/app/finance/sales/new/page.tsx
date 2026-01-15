@@ -39,7 +39,7 @@ export default function NewSalePage() {
     const [slipDate, setSlipDate] = useState(new Date().toISOString().split('T')[0])
     const [currencyCode, setCurrencyCode] = useState('TL')
     const [items, setItems] = useState([
-        { productName: '', quantity: 1, unitPrice: 0 }
+        { stockCode: '', productName: '', quantity: 1, unitPrice: 0, vatRate: 20 }
     ])
 
     const { data: customers } = useQuery({
@@ -64,7 +64,7 @@ export default function NewSalePage() {
     }
 
     const handleAddItem = () => {
-        setItems([...items, { productName: '', quantity: 1, unitPrice: 0 }])
+        setItems([...items, { stockCode: '', productName: '', quantity: 1, unitPrice: 0, vatRate: 20 }])
     }
 
     const handleRemoveItem = (index: number) => {
@@ -187,9 +187,11 @@ export default function NewSalePage() {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="w-[40%]">Ürün / Hizmet Adı</TableHead>
-                                <TableHead className="w-[20%]">Miktar</TableHead>
-                                <TableHead className="w-[20%]">Birim Fiyat</TableHead>
+                                <TableHead className="w-[15%]">Stok Kodu</TableHead>
+                                <TableHead className="w-[20%]">Ürün / Hizmet Adı</TableHead>
+                                <TableHead className="w-[15%]">Miktar</TableHead>
+                                <TableHead className="w-[15%]">Birim Fiyat</TableHead>
+                                <TableHead className="w-[15%]">KDV (%)</TableHead>
                                 <TableHead className="w-[15%] text-right">Tutar</TableHead>
                                 <TableHead className="w-[5%]"></TableHead>
                             </TableRow>
@@ -197,6 +199,13 @@ export default function NewSalePage() {
                         <TableBody>
                             {items.map((item, index) => (
                                 <TableRow key={index}>
+                                    <TableCell>
+                                        <Input
+                                            placeholder="Stok Kodu"
+                                            value={item.stockCode}
+                                            onChange={(e) => handleItemChange(index, 'stockCode', e.target.value)}
+                                        />
+                                    </TableCell>
                                     <TableCell>
                                         <Input
                                             placeholder="Örn: Yazılım Geliştirme Hizmeti"
@@ -220,6 +229,18 @@ export default function NewSalePage() {
                                             value={item.unitPrice}
                                             onChange={(e) => handleItemChange(index, 'unitPrice', parseFloat(e.target.value))}
                                         />
+                                    </TableCell>
+                                    <TableCell>
+                                        <select
+                                            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                                            value={item.vatRate}
+                                            onChange={(e) => handleItemChange(index, 'vatRate', parseInt(e.target.value))}
+                                        >
+                                            <option value="0">%0</option>
+                                            <option value="1">%1</option>
+                                            <option value="10">%10</option>
+                                            <option value="20">%20</option>
+                                        </select>
                                     </TableCell>
                                     <TableCell className="text-right font-medium">
                                         {(item.quantity * item.unitPrice).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}

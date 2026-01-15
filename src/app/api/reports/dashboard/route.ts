@@ -89,12 +89,12 @@ export async function GET(request: Request) {
 
         // Sıralama
         const topDebtors = detailedBalances
-            .filter(c => (c.balances['TL'] || 0) > 0)
+            .filter(c => (c.balances['TL'] || 0) > 0 && c.type === 'CUSTOMER')
             .sort((a, b) => (b.balances['TL'] || 0) - (a.balances['TL'] || 0))
             .slice(0, 5)
 
         const topCreditors = detailedBalances
-            .filter(c => (c.balances['TL'] || 0) < 0)
+            .filter(c => (c.balances['TL'] || 0) < 0 && c.type === 'SUPPLIER')
             .sort((a, b) => (a.balances['TL'] || 0) - (b.balances['TL'] || 0)) // En küçük (en borçlu olduğumuz)
             .slice(0, 5)
             .map(c => ({

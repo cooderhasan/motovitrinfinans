@@ -22,7 +22,8 @@ export async function GET(request: Request) {
                 transactions: {
                     select: {
                         transactionType: true,
-                        amount: true
+                        amount: true,
+                        currencyId: true
                     }
                 }
             },
@@ -35,6 +36,9 @@ export async function GET(request: Request) {
             let totalCredit = 0
 
             cari.transactions.forEach((tx: any) => {
+                // Sadece cari'nin varsayılan para birimindeki işlemleri topla
+                if (tx.currencyId !== cari.defaultCurrencyId) return
+
                 if (tx.transactionType === 'DEBIT') {
                     totalDebit += Number(tx.amount)
                 } else {

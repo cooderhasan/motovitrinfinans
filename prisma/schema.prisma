@@ -164,9 +164,11 @@ model SalesSlip {
 model SalesItem {
   id          Int       @id @default(autoincrement())
   salesSlipId Int       @map("sales_slip_id")
+  stockCode   String?   @map("stock_code")
   productName String    @map("product_name")
   quantity    Decimal   @db.Decimal(18, 2)
   unitPrice   Decimal   @db.Decimal(18, 2) @map("unit_price")
+  vatRate     Int       @default(20) @map("vat_rate")
   lineTotal   Decimal   @db.Decimal(18, 2) @map("line_total")
 
   salesSlip   SalesSlip @relation(fields: [salesSlipId], references: [id])
