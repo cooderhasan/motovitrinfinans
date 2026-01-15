@@ -23,9 +23,13 @@ export async function POST(request: Request) {
         }
 
         if (startDate && endDate) {
+            // End Date'i günün sonuna çekelim (23:59:59.999)
+            const endDateTime = new Date(endDate)
+            endDateTime.setHours(23, 59, 59, 999)
+
             whereClause.transactionDate = {
                 gte: new Date(startDate),
-                lte: new Date(endDate)
+                lte: endDateTime
             }
         }
 

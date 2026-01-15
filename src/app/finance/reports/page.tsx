@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -28,6 +28,16 @@ export default function ReportsPage() {
     const [loading, setLoading] = useState(false)
 
     const { data: caries } = useQuery({ queryKey: ['caries'], queryFn: getCaries })
+
+    // Cari seçildiğinde para birimini otomatik ayarla
+    useEffect(() => {
+        if (filter.cariId && caries) {
+            const cari = caries.find((c: any) => c.id === parseInt(filter.cariId))
+            if (cari && cari.defaultCurrency?.code) {
+                setFilter(prev => ({ ...prev, currencyCode: cari.defaultCurrency.code }))
+            }
+        }
+    }, [filter.cariId, caries])
 
     const handleGenerate = async () => {
         if (!filter.cariId) {

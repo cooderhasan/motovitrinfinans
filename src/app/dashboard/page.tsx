@@ -200,7 +200,7 @@ export default function DashboardPage() {
                             {data?.topDebtors?.length > 0 ? (
                                 <ResponsiveContainer width="100%" height="100%">
                                     <BarChart data={data.topDebtors} layout="vertical">
-                                        <XAxis type="number" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value) => `₺${value}`} />
+                                        <XAxis type="number" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(value: number) => `₺${value}`} />
                                         <YAxis type="category" dataKey="title" fontSize={11} tickLine={false} axisLine={false} width={120} />
                                         <Tooltip
                                             contentStyle={{
@@ -208,8 +208,12 @@ export default function DashboardPage() {
                                                 border: 'none',
                                                 boxShadow: '0 10px 40px rgba(0,0,0,0.1)'
                                             }}
+                                            formatter={(value: any, name: any, props: any) => {
+                                                const currency = props.payload.currencyCode || 'TL'
+                                                return [`${value.toLocaleString('tr-TR')} ${currency}`, 'Bakiye']
+                                            }}
                                         />
-                                        <Bar dataKey="balances.TL" radius={[0, 8, 8, 0]} name="Bakiye (TL)">
+                                        <Bar dataKey="primaryBalance" radius={[0, 8, 8, 0]} name="Bakiye">
                                             {data.topDebtors.map((entry: any, index: number) => (
                                                 <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
                                             ))}
@@ -255,7 +259,7 @@ export default function DashboardPage() {
                                     </div>
                                     <div className="text-right">
                                         <p className="font-bold text-rose-600">
-                                            {creditor.balances?.TL?.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} ₺
+                                            {creditor.primaryBalance?.toLocaleString('tr-TR', { minimumFractionDigits: 0, maximumFractionDigits: 0 })} {creditor.currencyCode}
                                         </p>
                                     </div>
                                 </div>

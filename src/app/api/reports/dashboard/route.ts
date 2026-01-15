@@ -71,38 +71,54 @@ export async function GET(request: Request) {
         })
 
         // 4. En Borçlu Müşteriler ve Alacaklı Tedarikçiler Listesi Hazırla
-        // Cari detaylarını çekmemiz lazım
         const cariIds = Object.keys(cariNetBalances).map(id => parseInt(id))
 
         let caries: any[] = []
         if (cariIds.length > 0) {
             caries = await db.cari.findMany({
                 where: { id: { in: cariIds } },
-                select: { id: true, title: true, type: true }
+                select: {
+                    id: true,
+                    title: true,
+                    type: true,
+                    defaultCurrency: { select: { code: true } }
+                }
             })
         }
 
-        const detailedBalances = caries.map(c => ({
-            ...c,
-            balances: cariNetBalances[c.id.toString()] || {}
-        }))
+        const detailedBalances = caries.map(c => {
+            const defaultCode = c.defaultCurrency?.code || 'TL'
+            const balanceInDefaultCurrency = cariNetBalances[c.id.toString()]?.[defaultCode] || 0
+
+            // Sıralama için basitçe TL bakiyesini veya varsayılan para birimini alıyoruz
+            // Gelişmiş versiyonda döviz kuru ile TL karşılığı hesaplanmalı
+            // Şimdilik: Eğer TL bakiyesi varsa onu, yoksa varsayılanı kullan (sıralama yaklaşık olur)
+            const sortValue = cariNetBalances[c.id.toString()]?.['TL'] || balanceInDefaultCurrency
+
+            return {
+                ...c,
+                balances: cariNetBalances[c.id.toString()] || {},
+                // Ana gösterilecek bakiye (kendi para birimi)
+                primaryBalance: balanceInDefaultCurrency,
+                currencyCode: defaultCode,
+                sortValue: Math.abs(sortValue)
+            }
+        })
 
         // Sıralama
         const topDebtors = detailedBalances
-            .filter(c => (c.balances['TL'] || 0) > 0 && c.type === 'CUSTOMER')
-            .sort((a, b) => (b.balances['TL'] || 0) - (a.balances['TL'] || 0))
+            .filter(c => c.type === 'CUSTOMER' && c.primaryBalance > 0) // Borçlu = Pozitif
+            .sort((a, b) => b.sortValue - a.sortValue)
             .slice(0, 5)
 
         const topCreditors = detailedBalances
-            .filter(c => (c.balances['TL'] || 0) < 0 && c.type === 'SUPPLIER')
-            .sort((a, b) => (a.balances['TL'] || 0) - (b.balances['TL'] || 0)) // En küçük (en borçlu olduğumuz)
+            .filter(c => c.type === 'SUPPLIER' && c.primaryBalance < 0) // Alacaklı = Negatif
+            .sort((a, b) => b.sortValue - a.sortValue)
             .slice(0, 5)
             .map(c => ({
                 ...c,
-                balances: {
-                    ...c.balances,
-                    TL: Math.abs(c.balances['TL'] || 0) // UI'da pozitif göstermek için
-                }
+                // UI'da pozitif göstermek için mutlak değer
+                primaryBalance: Math.abs(c.primaryBalance)
             }))
 
 
