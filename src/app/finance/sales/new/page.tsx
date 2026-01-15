@@ -242,8 +242,22 @@ export default function NewSalePage() {
                                             <option value="20">%20</option>
                                         </select>
                                     </TableCell>
-                                    <TableCell className="text-right font-medium">
-                                        {(item.quantity * item.unitPrice).toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                                    <TableCell>
+                                        <Input
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            className="text-right font-medium"
+                                            value={Math.round((item.quantity * item.unitPrice) * 100) / 100}
+                                            onChange={(e) => {
+                                                const newTotal = parseFloat(e.target.value) || 0
+                                                const quantity = item.quantity || 1
+                                                if (quantity !== 0) {
+                                                    const newUnitPrice = newTotal / quantity
+                                                    handleItemChange(index, 'unitPrice', newUnitPrice)
+                                                }
+                                            }}
+                                        />
                                     </TableCell>
                                     <TableCell>
                                         <Button
